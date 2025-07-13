@@ -67,7 +67,7 @@ export class Next extends pulumi.ComponentResource {
     const paths = getOpenNextPaths(appPath, openNextPath);
 
     const region = aws.getRegion({});
-    const regionName = region.then(r => r.name);
+    const regionName = pulumi.output(region).apply(r => r.name);
 
     const s3 = createS3Bucket({ name, tags }, defaultOptions);
 
@@ -89,7 +89,7 @@ export class Next extends pulumi.ComponentResource {
       bucketArn: s3.bucketArn,
       tableArn: dynamodb.tableArn,
       queueArn: sqs.queueArn,
-      regionName: regionName,
+      regionName: regionName.apply(name => name),
       tags,
     }, defaultOptions);
 
@@ -112,10 +112,10 @@ export class Next extends pulumi.ComponentResource {
       functionPath: paths.serverFunction,
       roleArn: serverRole.roleArn,
       config: lambdaConfig.server,
-      environment: lambdaEnvironment,
+      environment: lambdaEnvironment.apply(env => env),
       streaming,
       tags,
-    }, { ...defaultOptions, dependsOn: [serverRole.role] });
+    }, { ...defaultOptions, dependsOn: [serverRole.role] } as pulumi.ComponentResourceOptions);
 
     const imageFunctionResult = createImageFunction({
       name,
@@ -124,7 +124,7 @@ export class Next extends pulumi.ComponentResource {
       config: lambdaConfig.image,
       bucketName: s3.bucketName,
       tags,
-    }, { ...defaultOptions, dependsOn: [imageRole.role] });
+    }, { ...defaultOptions, dependsOn: [imageRole.role] } as pulumi.ComponentResourceOptions);
 
     const revalidationFunction = createRevalidationFunction({
       name,
@@ -133,7 +133,7 @@ export class Next extends pulumi.ComponentResource {
       config: lambdaConfig.revalidation,
       queueArn: sqs.queueArn,
       tags,
-    }, { ...defaultOptions, dependsOn: [revalidationRole.role] });
+    }, { ...defaultOptions, dependsOn: [revalidationRole.role] } as pulumi.ComponentResourceOptions);
 
     // Create warmer function if server function exists
     if (serverFunctionResult?.function) {
@@ -151,7 +151,7 @@ export class Next extends pulumi.ComponentResource {
         config: lambdaConfig.warmer,
         serverFunctionName: serverFunctionResult.function.name,
         tags,
-      }, { ...defaultOptions, dependsOn: [warmerRole.role] });
+      }, { ...defaultOptions, dependsOn: [warmerRole.role] } as pulumi.ComponentResourceOptions);
     }
 
     // Create CloudFront distribution

@@ -8,7 +8,7 @@ export type CreateServerFunctionArgs = {
   functionPath: string;
   roleArn: pulumi.Output<string>;
   config: LambdaConfig;
-  environment: Record<string, pulumi.Input<string>>;
+  environment: pulumi.Input<Record<string, pulumi.Input<string>>>;
   streaming: boolean;
   tags?: Record<string, string>;
 };

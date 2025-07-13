@@ -7,7 +7,7 @@ export type CreateServerRoleArgs = {
   bucketArn: pulumi.Output<string>;
   tableArn: pulumi.Output<string>;
   queueArn: pulumi.Output<string>;
-  regionName: string;
+  regionName: pulumi.Input<string>;
   tags?: Record<string, string>;
 };
 
