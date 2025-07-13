@@ -34,7 +34,7 @@ export type CloudFrontLoggingConfig = {
   prefix?: string;
 };
 
-export type OpenNextDeploymentArgs = {
+export type NextArgs = {
   /**
    * Path to the Next.js application
    */
