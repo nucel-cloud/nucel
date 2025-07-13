@@ -1,0 +1,3 @@
+name: pulu-front-infra
+runtime: nodejs
+description: Infrastructure for pulu-front monorepo apps
