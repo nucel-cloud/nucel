@@ -92,10 +92,49 @@ const site = new OpenNextDeployment("my-app", {
 
 ## Prerequisites
 
+### 1. Configure Package Manager (Important for Monorepos)
+
+If you're using pnpm in a monorepo, you must configure it to avoid symlinks for OpenNext compatibility.
+
+Add this to your root `.npmrc`:
+```
+node-linker=node-modules
+```
+
+or 
+
+```
+node-linker=hoisted
+shamefully-hoist=true
+hoist=true
+```
+
+This ensures that dependencies are copied as real files instead of symlinks, which is required for OpenNext bundling to work correctly.
+
+### 2. Configure Next.js for Monorepos
+
+Add this to your `next.config.ts` for proper monorepo support:
+```typescript
+import type { NextConfig } from "next";
+import path from "path";
+
+const nextConfig: NextConfig = {
+  output: "standalone",
+
+  transpilePackages: ["@repo/ui"], // Add your workspace packages
+};
+
+export default nextConfig;
+```
+
+### 3. Build with OpenNext
+
 Build your Next.js app with OpenNext:
 ```bash
-npx open-next@latest build
+npx @opennextjs/aws build
 ```
+
+### 4. Configure AWS
 
 Ensure AWS credentials are configured:
 ```bash
