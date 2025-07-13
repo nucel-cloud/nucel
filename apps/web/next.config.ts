@@ -1,10 +1,7 @@
 import type { NextConfig } from "next";
 import path from "path";
 
-const nextConfig: NextConfig = {
-  // OpenNext requires standalone output mode for proper bundling
-  
-  // Fix for monorepo - point to the monorepo root for file tracing
+const nextConfig: NextConfig = {  
   experimental: {
     // This includes files from the monorepo base two directories up
     // Optimize package imports
