@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as pulumi from "@pulumi/pulumi";
 import type { OpenNextPaths } from "../types/index.js";
 
 export function getOpenNextPaths(appPath: string, openNextPath: string): OpenNextPaths {
@@ -16,8 +17,8 @@ export function buildLambdaEnvironment(
   tableName: string,
   queueUrl: string,
   regionName: string,
-  customEnv?: Record<string, string>
-): Record<string, string> {
+  customEnv?: Record<string, string | pulumi.Input<string>>
+): Record<string, string | pulumi.Input<string>> {
   return {
     // Core OpenNext environment variables
     CACHE_BUCKET_NAME: bucketName,
