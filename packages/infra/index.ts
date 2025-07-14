@@ -1,5 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
-import { Next } from "@repo/pulumi-nextjs-aws";
+import { Next } from "@donswayo/pulumi-nextjs-aws";
 
 const config = new pulumi.Config();
 const stack = pulumi.getStack();

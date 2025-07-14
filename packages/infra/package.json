@@ -15,7 +15,7 @@
   "dependencies": {
     "@pulumi/aws": "^6.0.0",
     "@pulumi/pulumi": "^3.0.0",
-    "@repo/pulumi-nextjs-aws": "workspace:*"
+    "@donswayo/pulumi-nextjs-aws": "workspace:*"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
