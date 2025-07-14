@@ -1,5 +1,5 @@
 {
-  "name": "@repo/pulumi-nextjs-aws",
+  "name": "@donswayo/pulumi-nextjs-aws",
   "version": "0.1.0",
   "description": "Reusable Pulumi components for deploying Next.js apps with OpenNext to AWS",
   "main": "./dist/index.js",
