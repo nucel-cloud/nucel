@@ -25,9 +25,9 @@ pnpm add @donswayo/pulumi-nextjs-aws
 
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
-import { OpenNextDeployment } from "@donswayo/pulumi-nextjs-aws";
+import { Next } from "@donswayo/pulumi-nextjs-aws";
 
-const site = new OpenNextDeployment("my-nextjs-app", {
+const site = new Next("my-nextjs-app", {
   appPath: "./apps/web",
   openNextPath: ".open-next",
   environment: {
@@ -44,9 +44,9 @@ export const distributionId = site.distributionId;
 
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
-import { OpenNextDeployment } from "@donswayo/pulumi-nextjs-aws";
+import { Next } from "@donswayo/pulumi-nextjs-aws";
 
-const site = new OpenNextDeployment("my-app", {
+const site = new Next("my-app", {
   appPath: "./apps/web",
   openNextPath: ".open-next",
   streaming: true,
