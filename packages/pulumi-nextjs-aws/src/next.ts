@@ -43,6 +43,7 @@ export class Next extends pulumi.ComponentResource {
     const openNextPath = args.openNextPath ?? ".open-next";
     const streaming = args.streaming ?? true;
     const priceClass = args.priceClass ?? "PriceClass_100";
+    const waitForDeployment = args.waitForDeployment ?? true;
     const tags = args.tags ?? {};
 
     const lambdaConfig = {
@@ -170,6 +171,7 @@ export class Next extends pulumi.ComponentResource {
       domain: args.domain,
       priceClass,
       logging: args.cloudFrontLogging,
+      waitForDeployment,
       tags,
     }, defaultOptions);
 

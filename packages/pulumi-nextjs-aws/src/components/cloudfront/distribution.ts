@@ -14,6 +14,7 @@ export type CloudFrontArgs = {
   domain?: DomainConfig;
   priceClass?: string;
   logging?: CloudFrontLoggingConfig;
+  waitForDeployment?: boolean;
   tags?: Record<string, string>;
 };
 
@@ -39,6 +40,7 @@ export function createCloudFrontDistribution(
     domain,
     priceClass = "PriceClass_100",
     logging,
+    waitForDeployment = false,
     tags = {},
   } = args;
 
@@ -186,7 +188,7 @@ export function createCloudFrontDistribution(
     httpVersion: "http3",
     isIpv6Enabled: true,
     priceClass,
-    waitForDeployment: true,
+    waitForDeployment,
     
     aliases: domain ? [domain.name] : [],
     viewerCertificate: domain?.certificateArn ? {

@@ -82,6 +82,11 @@ export type NextArgs = {
   cloudFrontLogging?: CloudFrontLoggingConfig;
   
   /**
+   * Wait for CloudFront distribution deployment to complete
+   */
+  waitForDeployment?: boolean;
+  
+  /**
    * Tags to apply to all resources
    */
   tags?: Record<string, string>;
