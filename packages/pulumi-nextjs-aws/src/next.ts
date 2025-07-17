@@ -25,6 +25,10 @@ export class Next extends pulumi.ComponentResource {
   public readonly url: pulumi.Output<string>;
   public readonly distributionId: pulumi.Output<string>;
   public readonly bucketName: pulumi.Output<string>;
+  public readonly serverFunctionUrl?: pulumi.Output<string>;
+  public readonly imageFunctionUrl?: pulumi.Output<string>;
+  public readonly serverFunctionArn?: pulumi.Output<string>;
+  public readonly imageFunctionArn?: pulumi.Output<string>;
 
   constructor(
     name: string,
@@ -135,8 +139,8 @@ export class Next extends pulumi.ComponentResource {
       tags,
     }, { ...defaultOptions, dependsOn: [revalidationRole.role] } as pulumi.ComponentResourceOptions);
 
-    // Create warmer function if server function exists
-    if (serverFunctionResult?.function) {
+    // Create warmer function if server function exists and warmer is not disabled
+    if (serverFunctionResult?.function && args.lambda?.warmer?.enabled !== false) {
       const warmerRole = createWarmerRole(
         name,
         serverFunctionResult.function.arn,
@@ -172,11 +176,25 @@ export class Next extends pulumi.ComponentResource {
     this.url = cloudfront.url;
     this.distributionId = cloudfront.distributionId;
     this.bucketName = s3.bucketName;
+    
+    if (serverFunctionResult?.functionUrl) {
+      this.serverFunctionUrl = serverFunctionResult.functionUrl.functionUrl;
+      this.serverFunctionArn = serverFunctionResult.function.arn;
+    }
+    
+    if (imageFunctionResult?.functionUrl) {
+      this.imageFunctionUrl = imageFunctionResult.functionUrl.functionUrl;
+      this.imageFunctionArn = imageFunctionResult.function.arn;
+    }
 
     this.registerOutputs({
       url: this.url,
       distributionId: this.distributionId,
       bucketName: this.bucketName,
+      serverFunctionUrl: this.serverFunctionUrl,
+      imageFunctionUrl: this.imageFunctionUrl,
+      serverFunctionArn: this.serverFunctionArn,
+      imageFunctionArn: this.imageFunctionArn,
     });
   }
 }

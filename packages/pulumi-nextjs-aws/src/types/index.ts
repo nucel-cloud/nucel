@@ -18,6 +18,7 @@ export type RevalidationLambdaConfig = {
 };
 
 export type WarmerLambdaConfig = {
+  enabled?: boolean;
   memory?: number;
   timeout?: number;
   concurrency?: number;
@@ -96,4 +97,14 @@ export type OpenNextPaths = {
 
 export type ComponentOptions = {
   parent?: pulumi.Resource;
+};
+
+export type NextOutputs = {
+  url: pulumi.Output<string>;
+  distributionId: pulumi.Output<string>;
+  bucketName: pulumi.Output<string>;
+  serverFunctionUrl?: pulumi.Output<string>;
+  imageFunctionUrl?: pulumi.Output<string>;
+  serverFunctionArn?: pulumi.Output<string>;
+  imageFunctionArn?: pulumi.Output<string>;
 };
