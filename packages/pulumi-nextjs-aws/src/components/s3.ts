@@ -77,6 +77,7 @@ export type UploadAssetsArgs = {
 
 export type UploadAssetsOutputs = {
   assetPathPatterns: string[];
+  uploadedFiles: pulumi.Output<string>[];
 };
 
 export function uploadAssets(
@@ -85,6 +86,7 @@ export function uploadAssets(
 ): UploadAssetsOutputs {
   const { name, bucket, assetsPath, tags = {} } = args;
   const assetPathPatterns: string[] = [];
+  const uploadedFiles: pulumi.Output<string>[] = [];
 
   if (fs.existsSync(assetsPath)) {
     const files = globSync("**", {
@@ -95,6 +97,12 @@ export function uploadAssets(
     });
 
     const uniquePaths = new Set<string>();
+    const uploadTasks: {
+      file: string;
+      key: string;
+      cacheControl: string;
+      hex: string;
+    }[] = [];
 
     for (const file of files) {
       const hex = crypto.createHash("sha256").update(file).digest("hex").substring(0, 8);
@@ -123,21 +131,33 @@ export function uploadAssets(
         cacheControl = "public,max-age=86400,s-maxage=2592000,must-revalidate";
       }
 
-      new aws.s3.BucketObject(`${name}-asset-${hex}`, {
+      uploadTasks.push({ file, key, cacheControl, hex });
+    }
+
+    const totalFiles = uploadTasks.length;
+    console.log(`Creating ${totalFiles} S3 object resources for parallel upload...`);
+
+    uploadTasks.forEach((task) => {
+      const bucketObject = new aws.s3.BucketObject(`${name}-asset-${task.hex}`, {
         bucket: bucket.id,
-        key,
-        source: new pulumi.asset.FileAsset(path.join(assetsPath, file)),
-        cacheControl,
-        contentType: mime.getType(file) || undefined,
+        key: task.key,
+        source: new pulumi.asset.FileAsset(path.join(assetsPath, task.file)),
+        cacheControl: task.cacheControl,
+        contentType: mime.getType(task.file) || undefined,
         tags,
       }, opts);
-    }
+
+      uploadedFiles.push(bucketObject.key);
+    });
+
+    console.log(`All ${totalFiles} S3 objects created. Pulumi will upload them in parallel.`);
 
     assetPathPatterns.push(...Array.from(uniquePaths).sort());
   }
 
-  return { assetPathPatterns };
+  return { assetPathPatterns, uploadedFiles };
 }
+
 
 export function uploadErrorPage(
   name: string,
