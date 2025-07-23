@@ -84,7 +84,7 @@ export function uploadAssets(
   args: UploadAssetsArgs,
   opts?: ComponentOptions
 ): UploadAssetsOutputs {
-  const { name, bucket, assetsPath, tags = {} } = args;
+  const { name, bucket, assetsPath } = args;
   const assetPathPatterns: string[] = [];
   const uploadedFiles: pulumi.Output<string>[] = [];
 
@@ -138,16 +138,13 @@ export function uploadAssets(
     console.log(`Creating ${totalFiles} S3 object resources for parallel upload...`);
 
     uploadTasks.forEach((task) => {
-      const bucketObject = new aws.s3.BucketObject(`${name}-asset-${task.hex}`, {
+      new aws.s3.BucketObject(`${name}-asset-${task.hex}`, {
         bucket: bucket.id,
         key: task.key,
         source: new pulumi.asset.FileAsset(path.join(assetsPath, task.file)),
         cacheControl: task.cacheControl,
         contentType: mime.getType(task.file) || undefined,
-        tags,
       }, opts);
-
-      uploadedFiles.push(bucketObject.key);
     });
 
     console.log(`All ${totalFiles} S3 objects created. Pulumi will upload them in parallel.`);
