@@ -175,6 +175,7 @@ export class Next extends pulumi.ComponentResource {
       tags,
     }, defaultOptions);
 
+
     this.url = cloudfront.url;
     this.distributionId = cloudfront.distributionId;
     this.bucketName = s3.bucketName;
