@@ -29,6 +29,8 @@ export class Next extends pulumi.ComponentResource {
   public readonly imageFunctionUrl?: pulumi.Output<string>;
   public readonly serverFunctionArn?: pulumi.Output<string>;
   public readonly imageFunctionArn?: pulumi.Output<string>;
+  public readonly serverRoleArn?: pulumi.Output<string>;
+  public readonly serverRoleName?: pulumi.Output<string>;
 
   constructor(
     name: string,
@@ -190,6 +192,9 @@ export class Next extends pulumi.ComponentResource {
       this.imageFunctionArn = imageFunctionResult.function.arn;
     }
 
+    this.serverRoleArn = serverRole.roleArn;
+    this.serverRoleName = serverRole.role.name;
+
     this.registerOutputs({
       url: this.url,
       distributionId: this.distributionId,
@@ -198,6 +203,8 @@ export class Next extends pulumi.ComponentResource {
       imageFunctionUrl: this.imageFunctionUrl,
       serverFunctionArn: this.serverFunctionArn,
       imageFunctionArn: this.imageFunctionArn,
+      serverRoleArn: this.serverRoleArn,
+      serverRoleName: this.serverRoleName,
     });
   }
 }
