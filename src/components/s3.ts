@@ -18,7 +18,6 @@ export type S3ComponentOutputs = {
   bucket: aws.s3.BucketV2;
   bucketArn: pulumi.Output<string>;
   bucketName: pulumi.Output<string>;
-  bucketRegionalDomainName: pulumi.Output<string>;
   deploymentId: pulumi.Output<string>;
 };
 
@@ -51,13 +50,25 @@ export function createS3Component(args: S3ComponentArgs, opts?: ComponentOptions
     restrictPublicBuckets: false,
   }, opts);
 
-  // Note: Bucket policy is created in CloudFront component to include OAI access
+  // Bucket policy for public read access
+  new aws.s3.BucketPolicy(`${name}-assets-policy`, {
+    bucket: bucket.id,
+    policy: bucket.arn.apply((arn) => JSON.stringify({
+      Version: "2012-10-17",
+      Statement: [{
+        Sid: "PublicReadGetObject",
+        Effect: "Allow",
+        Principal: "*",
+        Action: "s3:GetObject",
+        Resource: `${arn}/*`,
+      }],
+    })),
+  }, opts);
 
   return {
     bucket,
     bucketArn: bucket.arn,
     bucketName: bucket.bucket,
-    bucketRegionalDomainName: bucket.bucketRegionalDomainName,
     deploymentId: bucket.id,
   };
 }
@@ -136,11 +147,6 @@ export function uploadAssets(
       // Create a command that uploads multiple files
       const uploadCommand = new command.local.Command(`${name}-assets-batch-${batchIndex}`, {
         create: pulumi.all([bucket.bucket, aws.getRegion()]).apply(([bucketName, region]) => {
-          // First sync to delete old files (only on first batch)
-          const syncCommand = batchIndex === 0 
-            ? `aws s3 sync "${assetsPath}" "s3://${bucketName}/_assets" --delete --region "${region.name}" && ` 
-            : '';
-          
           // Build multiple aws s3 cp commands joined with &&
           const commands = batch.map(task => {
             const source = path.join(assetsPath, task.file);
@@ -148,14 +154,9 @@ export function uploadAssets(
             return `aws s3 cp "${source}" "${target}" --content-type "${task.contentType}" --cache-control "${task.cacheControl}" --region "${region.name}"`;
           });
           
-          return syncCommand + commands.join(' && ');
+          return commands.join(' && ');
         }),
         update: pulumi.all([bucket.bucket, aws.getRegion()]).apply(([bucketName, region]) => {
-          // First sync to delete old files (only on first batch)
-          const syncCommand = batchIndex === 0 
-            ? `aws s3 sync "${assetsPath}" "s3://${bucketName}/_assets" --delete --region "${region.name}" && ` 
-            : '';
-          
           // Same for updates
           const commands = batch.map(task => {
             const source = path.join(assetsPath, task.file);
@@ -163,7 +164,7 @@ export function uploadAssets(
             return `aws s3 cp "${source}" "${target}" --content-type "${task.contentType}" --cache-control "${task.cacheControl}" --region "${region.name}"`;
           });
           
-          return syncCommand + commands.join(' && ');
+          return commands.join(' && ');
         }),
         environment: {
           AWS_PAGER: "", // Disable pager
@@ -177,83 +178,4 @@ export function uploadAssets(
   }
 
   return { assetPathPatterns, uploadedFiles };
-}
-
-
-export function uploadErrorPage(
-  name: string,
-  bucket: aws.s3.BucketV2,
-  tags: Record<string, string> = {},
-  opts?: ComponentOptions
-): void {
-  const errorPageContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Temporarily Unavailable</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f5f5f5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
-        .container {
-            text-align: center;
-            padding: 40px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            max-width: 600px;
-            margin: 0 20px;
-        }
-        h1 {
-            color: #333;
-            font-size: 48px;
-            margin: 0 0 16px 0;
-            font-weight: 600;
-        }
-        h2 {
-            color: #666;
-            font-size: 24px;
-            margin: 0 0 24px 0;
-            font-weight: 400;
-        }
-        p {
-            color: #666;
-            font-size: 16px;
-            line-height: 1.6;
-            margin: 0 0 32px 0;
-        }
-        .status-code {
-            color: #999;
-            font-size: 14px;
-            margin-top: 32px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>503</h1>
-        <h2>Service Temporarily Unavailable</h2>
-        <p>We're currently performing maintenance on our servers. Please try again in a few moments.</p>
-        <p>If this problem persists, please contact our support team.</p>
-        <div class="status-code">Error Code: 503</div>
-    </div>
-</body>
-</html>`;
-
-  new aws.s3.BucketObject(`${name}-error-page`, {
-    bucket: bucket.id,
-    key: "503.html",
-    content: errorPageContent,
-    contentType: "text/html",
-    cacheControl: "no-cache, no-store, must-revalidate",
-    tags,
-  }, opts);
 }

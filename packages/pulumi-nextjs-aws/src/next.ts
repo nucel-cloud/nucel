@@ -3,7 +3,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 
 import type { NextArgs } from "./types/index.js";
-import { createS3Bucket, uploadAssets, uploadErrorPage } from "./components/s3.js";
+import { createS3Component, uploadAssets, uploadErrorPage } from "./components/s3.js";
 import { createISRTable } from "./components/dynamodb.js";
 import { createRevalidationQueue } from "./components/sqs.js";
 import { 
@@ -76,7 +76,7 @@ export class Next extends pulumi.ComponentResource {
     const region = aws.getRegion({});
     const regionName = pulumi.output(region).apply(r => r.name);
 
-    const s3 = createS3Bucket({ name, tags }, defaultOptions);
+    const s3 = createS3Component({ name, tags }, defaultOptions);
 
     const { assetPathPatterns } = uploadAssets({
       name,
