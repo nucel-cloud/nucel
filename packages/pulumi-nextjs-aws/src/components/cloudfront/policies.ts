@@ -2,53 +2,90 @@ import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 import type { ComponentOptions } from "../../types/index.js";
 
-export function createCachePolicies(name: string, opts?: ComponentOptions) {
-  const serverCachePolicy = new aws.cloudfront.CachePolicy(`${name}-server-cache`, {
-    comment: "OpenNext server cache policy - optimized",
-    defaultTtl: 300,
-    maxTtl: 31536000,
-    minTtl: 1,
-    parametersInCacheKeyAndForwardedToOrigin: {
-      cookiesConfig: {
-        cookieBehavior: "all",
-      },
-      enableAcceptEncodingBrotli: true,
-      enableAcceptEncodingGzip: true,
-      headersConfig: {
-        headerBehavior: "whitelist",
-        headers: {
-          items: ["x-open-next-cache-key"],
+/**
+ * Gets or creates CloudFront cache policies for OpenNext v3 deployments.
+ * By default, uses shared policies to avoid AWS limits. Can create per-deployment
+ * policies if useSharedPolicies is false.
+ */
+export function createCachePolicies(name: string, opts?: ComponentOptions & { useSharedPolicies?: boolean }) {
+  const useShared = opts?.useSharedPolicies !== false; // Default to true
+  
+  if (!useShared) {
+    // Create per-deployment policies (legacy behavior)
+    return createPerDeploymentCachePolicies(name, opts);
+  }
+  // Try to get existing shared cache policies first, create if they don't exist
+  // Using fixed names with v3 suffix to ensure they're shared across all deployments
+  
+  // Server cache policy - shared across all OpenNext v3 deployments
+  const serverCachePolicyName = "opennext-v3-server-cache";
+  const serverCachePolicy = pulumi.output(
+    aws.cloudfront.getCachePolicy({ name: serverCachePolicyName }, { async: true }).catch(() => null)
+  ).apply(existingPolicy => {
+    if (existingPolicy?.id) {
+      return existingPolicy;
+    }
+    // Create only if it doesn't exist
+    return new aws.cloudfront.CachePolicy(serverCachePolicyName, {
+      name: serverCachePolicyName,
+      comment: "Shared OpenNext v3 server cache policy - optimized for SSR and API routes",
+      defaultTtl: 300,
+      maxTtl: 31536000,
+      minTtl: 1,
+      parametersInCacheKeyAndForwardedToOrigin: {
+        cookiesConfig: {
+          cookieBehavior: "all",
+        },
+        enableAcceptEncodingBrotli: true,
+        enableAcceptEncodingGzip: true,
+        headersConfig: {
+          headerBehavior: "whitelist",
+          headers: {
+            items: ["x-open-next-cache-key"],
+          },
+        },
+        queryStringsConfig: {
+          queryStringBehavior: "all",
         },
       },
-      queryStringsConfig: {
-        queryStringBehavior: "all",
-      },
-    },
-  }, opts);
+    }, { ...opts, protect: true }); // Protect from accidental deletion
+  });
 
-  const staticAssetsOptimizedCache = new aws.cloudfront.CachePolicy(`${name}-static-assets-cache`, {
-    comment: "Optimized cache policy for static assets with long TTL",
-    defaultTtl: 86400 * 30,
-    maxTtl: 31536000,
-    minTtl: 86400,
-    parametersInCacheKeyAndForwardedToOrigin: {
-      cookiesConfig: {
-        cookieBehavior: "none",
-      },
-      enableAcceptEncodingBrotli: true,
-      enableAcceptEncodingGzip: true,
-      headersConfig: {
-        headerBehavior: "whitelist",
-        headers: {
-          items: ["CloudFront-Viewer-Country", "CloudFront-Is-Mobile-Viewer"],
+  // Static assets cache policy - shared across all OpenNext v3 deployments
+  const staticAssetsPolicyName = "opennext-v3-static-assets";
+  const staticAssetsOptimizedCache = pulumi.output(
+    aws.cloudfront.getCachePolicy({ name: staticAssetsPolicyName }, { async: true }).catch(() => null)
+  ).apply(existingPolicy => {
+    if (existingPolicy?.id) {
+      return existingPolicy;
+    }
+    // Create only if it doesn't exist
+    return new aws.cloudfront.CachePolicy(staticAssetsPolicyName, {
+      name: staticAssetsPolicyName,
+      comment: "Shared OpenNext v3 static assets cache policy - long TTL for immutable assets",
+      defaultTtl: 86400 * 30,
+      maxTtl: 31536000,
+      minTtl: 86400,
+      parametersInCacheKeyAndForwardedToOrigin: {
+        cookiesConfig: {
+          cookieBehavior: "none",
+        },
+        enableAcceptEncodingBrotli: true,
+        enableAcceptEncodingGzip: true,
+        headersConfig: {
+          headerBehavior: "whitelist",
+          headers: {
+            items: ["CloudFront-Viewer-Country", "CloudFront-Is-Mobile-Viewer"],
+          },
+        },
+        queryStringsConfig: {
+          queryStringBehavior: "all",
         },
       },
-      queryStringsConfig: {
-        queryStringBehavior: "all",
-      },
-    },
-  }, opts);
+    }, { ...opts, protect: true }); // Protect from accidental deletion
+  });
 
+  // Use AWS managed policies where possible
   const staticCachePolicy = pulumi.output(
     aws.cloudfront.getCachePolicy({ name: "Managed-CachingOptimized" })
   ).apply(policy => policy.id!);
@@ -65,39 +102,69 @@ export function createCachePolicies(name: string, opts?: ComponentOptions) {
   };
 }
 
-export function createResponseHeadersPolicy(name: string, opts?: ComponentOptions) {
-  return new aws.cloudfront.ResponseHeadersPolicy(`${name}-response-headers`, {
-    comment: "OpenNext security headers",
-    securityHeadersConfig: {
-      contentTypeOptions: {
-        override: false,
+/**
+ * Gets or creates a shared response headers policy for OpenNext v3 deployments.
+ * This policy adds security headers to all responses.
+ */
+export function createResponseHeadersPolicy(_name: string, opts?: ComponentOptions) {
+  const policyName = "opennext-v3-response-headers";
+  
+  return pulumi.output(
+    aws.cloudfront.getResponseHeadersPolicy({ name: policyName }, { async: true }).catch(() => null)
+  ).apply(existingPolicy => {
+    if (existingPolicy?.id) {
+      return existingPolicy;
+    }
+    // Create only if it doesn't exist
+    return new aws.cloudfront.ResponseHeadersPolicy(policyName, {
+      name: policyName,
+      comment: "Shared OpenNext v3 security headers policy",
+      securityHeadersConfig: {
+        contentTypeOptions: {
+          override: false,
+        },
+        frameOptions: {
+          frameOption: "DENY",
+          override: true,
+        },
+        referrerPolicy: {
+          referrerPolicy: "same-origin",
+          override: true,
+        },
+        strictTransportSecurity: {
+          accessControlMaxAgeSec: 63072000,
+          includeSubdomains: true,
+          override: true,
+        },
+        xssProtection: {
+          modeBlock: true,
+          protection: true,
+          override: true,
+        },
       },
-      frameOptions: {
-        frameOption: "DENY",
-        override: true,
-      },
-      referrerPolicy: {
-        referrerPolicy: "same-origin",
-        override: true,
-      },
-      strictTransportSecurity: {
-        accessControlMaxAgeSec: 63072000,
-        includeSubdomains: true,
-        override: true,
-      },
-      xssProtection: {
-        modeBlock: true,
-        protection: true,
-        override: true,
-      },
-    },
-  }, opts);
+    }, { ...opts, protect: true }); // Protect from accidental deletion
+  });
 }
 
-export function createViewerRequestFunction(name: string, opts?: ComponentOptions) {
-  return new aws.cloudfront.Function(`${name}-viewer-request`, {
-    runtime: "cloudfront-js-2.0",
-    code: `
+/**
+ * Gets or creates a shared CloudFront viewer request function for OpenNext v3.
+ * This function handles cache key generation and header forwarding.
+ */
+export function createViewerRequestFunction(_name: string, opts?: ComponentOptions) {
+  const functionName = "opennext-v3-viewer-request";
+  
+  return pulumi.output(
+    aws.cloudfront.getFunction({ name: functionName, stage: "LIVE" }, { async: true }).catch(() => null)
+  ).apply(existingFunction => {
+    if (existingFunction?.arn) {
+      return existingFunction;
+    }
+    // Create only if it doesn't exist
+    return new aws.cloudfront.Function(functionName, {
+      name: functionName,
+      comment: "Shared OpenNext v3 viewer request handler",
+      runtime: "cloudfront-js-2.0",
+      code: `
 function handler(event) {
     var request = event.request;
     
@@ -162,6 +229,74 @@ function handler(event) {
     return request;
 }
     `,
-    publish: true,
+      publish: true,
+    }, { ...opts, protect: true }); // Protect from accidental deletion
+  });
+}
+
+/**
+ * Creates per-deployment cache policies (legacy behavior).
+ * Use only if you need custom policies per deployment.
+ */
+function createPerDeploymentCachePolicies(name: string, opts?: ComponentOptions) {
+  const serverCachePolicy = new aws.cloudfront.CachePolicy(`${name}-server-cache`, {
+    comment: `OpenNext v3 server cache policy for ${name}`,
+    defaultTtl: 300,
+    maxTtl: 31536000,
+    minTtl: 1,
+    parametersInCacheKeyAndForwardedToOrigin: {
+      cookiesConfig: {
+        cookieBehavior: "all",
+      },
+      enableAcceptEncodingBrotli: true,
+      enableAcceptEncodingGzip: true,
+      headersConfig: {
+        headerBehavior: "whitelist",
+        headers: {
+          items: ["x-open-next-cache-key"],
+        },
+      },
+      queryStringsConfig: {
+        queryStringBehavior: "all",
+      },
+    },
   }, opts);
+
+  const staticAssetsOptimizedCache = new aws.cloudfront.CachePolicy(`${name}-static-assets-cache`, {
+    comment: `OpenNext v3 static assets cache policy for ${name}`,
+    defaultTtl: 86400 * 30,
+    maxTtl: 31536000,
+    minTtl: 86400,
+    parametersInCacheKeyAndForwardedToOrigin: {
+      cookiesConfig: {
+        cookieBehavior: "none",
+      },
+      enableAcceptEncodingBrotli: true,
+      enableAcceptEncodingGzip: true,
+      headersConfig: {
+        headerBehavior: "whitelist",
+        headers: {
+          items: ["CloudFront-Viewer-Country", "CloudFront-Is-Mobile-Viewer"],
+        },
+      },
+      queryStringsConfig: {
+        queryStringBehavior: "all",
+      },
+    },
+  }, opts);
+
+  const staticCachePolicy = pulumi.output(
+    aws.cloudfront.getCachePolicy({ name: "Managed-CachingOptimized" })
+  ).apply(policy => policy.id!);
+
+  const serverOriginRequestPolicy = pulumi.output(
+    aws.cloudfront.getOriginRequestPolicy({ name: "Managed-AllViewerExceptHostHeader" })
+  ).apply(policy => policy.id!);
+
+  return {
+    serverCachePolicy,
+    staticAssetsOptimizedCache,
+    staticCachePolicy,
+    serverOriginRequestPolicy,
+  };
 }

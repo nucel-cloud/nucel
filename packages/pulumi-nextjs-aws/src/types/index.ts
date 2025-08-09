@@ -90,6 +90,13 @@ export type NextArgs = {
    * Tags to apply to all resources
    */
   tags?: Record<string, string>;
+  
+  /**
+   * Use shared CloudFront policies to reduce AWS resource limits.
+   * Set to false if you need custom policies for specific requirements.
+   * Default: true
+   */
+  useSharedPolicies?: boolean;
 };
 
 export type OpenNextPaths = {
