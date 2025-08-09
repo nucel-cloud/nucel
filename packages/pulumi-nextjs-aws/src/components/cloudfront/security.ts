@@ -83,6 +83,19 @@ export function createCloudFrontAlarms(
 ) {
   const alarms: aws.cloudwatch.MetricAlarm[] = [];
 
+  // Create SNS topic first if email is provided
+  const topicArn = alarmEmail ? new aws.sns.Topic(`${name}-alarms`, {
+    displayName: `CloudFront Alarms for ${name}`,
+  }, opts).arn : undefined;
+
+  if (alarmEmail && topicArn) {
+    new aws.sns.TopicSubscription(`${name}-alarm-email`, {
+      topic: topicArn,
+      protocol: "email",
+      endpoint: alarmEmail,
+    }, opts);
+  }
+
   // 4xx error rate alarm
   const error4xxAlarm = new aws.cloudwatch.MetricAlarm(`${name}-4xx-errors`, {
     comparisonOperator: "GreaterThanThreshold",
@@ -98,6 +111,8 @@ export function createCloudFrontAlarms(
       Region: "Global",
     },
     treatMissingData: "notBreaching",
+    alarmActions: topicArn ? [topicArn] : undefined,
+    okActions: topicArn ? [topicArn] : undefined,
   }, opts);
   alarms.push(error4xxAlarm);
 
@@ -116,6 +131,8 @@ export function createCloudFrontAlarms(
       Region: "Global",
     },
     treatMissingData: "notBreaching",
+    alarmActions: topicArn ? [topicArn] : undefined,
+    okActions: topicArn ? [topicArn] : undefined,
   }, opts);
   alarms.push(error5xxAlarm);
 
@@ -134,27 +151,10 @@ export function createCloudFrontAlarms(
       Region: "Global",
     },
     treatMissingData: "notBreaching",
+    alarmActions: topicArn ? [topicArn] : undefined,
+    okActions: topicArn ? [topicArn] : undefined,
   }, opts);
   alarms.push(originLatencyAlarm);
-
-  // If email is provided, create SNS topic for notifications
-  if (alarmEmail) {
-    const topic = new aws.sns.Topic(`${name}-alarms`, {
-      displayName: `CloudFront Alarms for ${name}`,
-    }, opts);
-
-    new aws.sns.TopicSubscription(`${name}-alarm-email`, {
-      topic: topic.arn,
-      protocol: "email",
-      endpoint: alarmEmail,
-    }, opts);
-
-    // Add alarm actions to all alarms
-    alarms.forEach(alarm => {
-      alarm.alarmActions = [topic.arn];
-      alarm.okActions = [topic.arn];
-    });
-  }
 
   return alarms;
 }
