@@ -33,6 +33,14 @@ export type DomainConfig = {
 export type CloudFrontLoggingConfig = {
   bucket: string;
   prefix?: string;
+  includeCookies?: boolean;
+  enableRealtimeLogs?: boolean; // Send logs to Kinesis for real-time processing
+};
+
+export type CloudFrontSecurityConfig = {
+  enableOriginAccessControl?: boolean; // Use OAC instead of OAI (more secure)
+  restrictGeoLocations?: string[]; // ISO country codes to restrict (e.g., ["CN", "RU"])
+  webAclId?: pulumi.Input<string>; // Optional WAF ACL if user already has one
 };
 
 export type NextArgs = {
@@ -97,6 +105,11 @@ export type NextArgs = {
    * Default: true
    */
   useSharedPolicies?: boolean;
+  
+  /**
+   * CloudFront security configuration
+   */
+  security?: CloudFrontSecurityConfig;
 };
 
 export type OpenNextPaths = {

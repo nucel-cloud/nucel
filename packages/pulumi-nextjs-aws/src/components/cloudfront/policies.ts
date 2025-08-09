@@ -95,8 +95,8 @@ export function createCachePolicies(name: string, opts?: ComponentOptions & { us
   ).apply(policy => policy.id!);
 
   return {
-    serverCachePolicy,
-    staticAssetsOptimizedCache,
+    serverCachePolicy: pulumi.output(serverCachePolicy).apply(p => p.id!) as pulumi.Output<string>,
+    staticAssetsOptimizedCache: pulumi.output(staticAssetsOptimizedCache).apply(p => p.id!) as pulumi.Output<string>,
     staticCachePolicy,
     serverOriginRequestPolicy,
   };
@@ -294,8 +294,8 @@ function createPerDeploymentCachePolicies(name: string, opts?: ComponentOptions)
   ).apply(policy => policy.id!);
 
   return {
-    serverCachePolicy,
-    staticAssetsOptimizedCache,
+    serverCachePolicy: serverCachePolicy.id,
+    staticAssetsOptimizedCache: staticAssetsOptimizedCache.id,
     staticCachePolicy,
     serverOriginRequestPolicy,
   };
