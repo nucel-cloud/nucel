@@ -1,4 +1,4 @@
-# Pulu Front - Next.js Monorepo with AWS Deployment
+# Pulumi AWS - Next.js Monorepo with AWS Deployment
 
 A production-ready monorepo for deploying Next.js applications to AWS using Pulumi and OpenNext. This project provides reusable infrastructure components and automated deployment workflows for serverless Next.js applications.
 
@@ -18,7 +18,7 @@ This monorepo includes multiple Next.js applications with shared components and 
 ## Repository Structure
 
 ```
-pulu-front/
+pulumi-aws/
 ├── apps/
 │   ├── docs/          # Documentation site built with Fumadocs
 │   └── web/           # Main web application
@@ -138,7 +138,7 @@ pulu-front/
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd pulu-front
+cd pulumi-aws
 
 # Install dependencies
 pnpm install

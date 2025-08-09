@@ -1,6 +1,6 @@
 # @repo/infra
 
-Infrastructure deployment for all pulu-front apps using Pulumi and AWS.
+Infrastructure deployment for all pulumi-aws apps using Pulumi and AWS.
 
 ## Setup
 
