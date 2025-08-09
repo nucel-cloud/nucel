@@ -15,21 +15,6 @@ This monorepo includes multiple Next.js applications with shared components and 
 - **Type Safety**: 100% TypeScript across all packages
 - **Modern Tooling**: Next.js 15 with Turbopack, React 19, and Tailwind CSS v4
 
-## Repository Structure
-
-```
-pulumi-aws/
-├── apps/
-│   ├── docs/          # Documentation site built with Fumadocs
-│   └── web/           # Main web application
-├── packages/
-│   ├── infra/                 # Pulumi infrastructure deployment
-│   ├── pulumi-nextjs-aws/     # Reusable Pulumi components for Next.js on AWS
-│   ├── ui/                    # Shared React component library
-│   ├── eslint-config/         # Shared ESLint configurations
-│   ├── tailwind-config/       # Shared Tailwind CSS configuration
-│   └── typescript-config/     # Shared TypeScript configurations
-```
 
 ### Applications
 
@@ -47,7 +32,7 @@ pulumi-aws/
 
 ### Packages
 
-#### `@donswayo/pulumi-nextjs-aws` (v1.0.1)
+#### `@donswayo/pulumi-nextjs-aws` (v1.1.0)
 **Published NPM Package**: Reusable Pulumi components for deploying Next.js apps to AWS
 
 **Features**:
@@ -64,6 +49,10 @@ pulumi-aws/
 - Security headers and CORS configuration
 - Geo-location headers forwarding
 - OpenNext v3 compatibility
+- Shared CloudFront cache policies to avoid AWS resource limits
+- Origin Access Control (OAC) support for enhanced security
+- Geo-restriction capabilities
+- CloudWatch alarms for monitoring (4xx, 5xx errors, origin latency)
 
 **AWS Resources Created**:
 - **Lambda Functions**:
@@ -73,9 +62,12 @@ pulumi-aws/
   - Warmer Function: Prevents cold starts (256MB default)
 - **CloudFront Distribution**:
   - HTTP/3 enabled
-  - Custom cache policies for optimal performance
+  - Shared cache policies with get-or-create pattern
   - Edge functions for request/response manipulation
   - Security headers (HSTS, X-Frame-Options, etc.)
+  - Origin Access Control (OAC) support for S3
+  - Geo-restriction capabilities
+  - CloudWatch alarms with SNS notifications
 - **Storage & Database**:
   - S3 bucket with versioning and lifecycle policies
   - DynamoDB table for ISR cache
@@ -107,13 +99,14 @@ pulumi-aws/
 ## Technology Stack
 
 ### Core Technologies
-- **Runtime**: Node.js 22+
+- **Runtime**: Node.js 22+ (ARM64 Lambda functions)
 - **Package Manager**: pnpm 10.11.0
 - **Build System**: Turborepo 2.5.4
 - **Framework**: Next.js 15.3.x
 - **React**: v19.1.0
 - **Styling**: Tailwind CSS v4.1.x
 - **TypeScript**: v5.8.x
+- **Infrastructure**: @donswayo/pulumi-nextjs-aws v1.1.0
 
 ### Infrastructure
 - **IaC**: Pulumi v3.x
@@ -128,10 +121,10 @@ pulumi-aws/
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18 or higher
+- Node.js 22 or higher (recommended for development)
 - pnpm 10.11.0
-- AWS CLI configured
-- Pulumi CLI installed
+- AWS CLI configured with appropriate permissions
+- Pulumi CLI v3.x installed
 
 ### Installation
 
@@ -293,6 +286,16 @@ interface NextArgs {
   
   // Resource tags
   tags?: Record<string, string>;
+  
+  useSharedPolicies?: boolean;         // Use shared CloudFront policies (default: true)
+  
+  security?: {
+    enableOriginAccessControl?: boolean;  // Use OAC instead of OAI
+    restrictGeoLocations?: string[];      // ISO country codes to restrict
+    webAclId?: string;                    // Optional WAF ACL
+  };
+  
+  alarmEmail?: string;                 // Email for CloudWatch alarm notifications
 }
 ```
 
