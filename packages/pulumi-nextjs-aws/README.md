@@ -92,7 +92,7 @@ const site = new Next("my-app", {
 
 ## Prerequisites
 
-### 1. Configure Package Manager (Important for Monodonswayos)
+### 1. Configure Package Manager (Important for monorepo)
 
 If you're using pnpm in a monodonswayo, you must configure it to avoid symlinks for OpenNext compatibility.
 
@@ -111,7 +111,7 @@ hoist=true
 
 This ensures that dependencies are copied as real files instead of symlinks, which is required for OpenNext bundling to work correctly.
 
-### 2. Configure Next.js for Monodonswayos
+### 2. Configure Next.js for Monorepo
 
 Add this to your `next.config.ts` for proper monodonswayo support:
 ```typescript
