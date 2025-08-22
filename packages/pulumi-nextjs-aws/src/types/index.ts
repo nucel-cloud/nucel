@@ -18,6 +18,7 @@ export type RevalidationLambdaConfig = {
 };
 
 export type WarmerLambdaConfig = {
+  enabled?: boolean;
   memory?: number;
   timeout?: number;
   concurrency?: number;
@@ -32,6 +33,14 @@ export type DomainConfig = {
 export type CloudFrontLoggingConfig = {
   bucket: string;
   prefix?: string;
+  includeCookies?: boolean;
+  enableRealtimeLogs?: boolean; // Send logs to Kinesis for real-time processing
+};
+
+export type CloudFrontSecurityConfig = {
+  enableOriginAccessControl?: boolean; // Use OAC instead of OAI (more secure)
+  restrictGeoLocations?: string[]; // ISO country codes to restrict (e.g., ["CN", "RU"])
+  webAclId?: pulumi.Input<string>; // Optional WAF ACL if user already has one
 };
 
 export type NextArgs = {
@@ -81,9 +90,26 @@ export type NextArgs = {
   cloudFrontLogging?: CloudFrontLoggingConfig;
   
   /**
+   * Wait for CloudFront distribution deployment to complete
+   */
+  waitForDeployment?: boolean;
+  
+  /**
    * Tags to apply to all resources
    */
   tags?: Record<string, string>;
+  
+  /**
+   * Use shared CloudFront policies to reduce AWS resource limits.
+   * Set to false if you need custom policies for specific requirements.
+   * Default: true
+   */
+  useSharedPolicies?: boolean;
+  
+  /**
+   * CloudFront security configuration
+   */
+  security?: CloudFrontSecurityConfig;
 };
 
 export type OpenNextPaths = {
@@ -96,4 +122,14 @@ export type OpenNextPaths = {
 
 export type ComponentOptions = {
   parent?: pulumi.Resource;
+};
+
+export type NextOutputs = {
+  url: pulumi.Output<string>;
+  distributionId: pulumi.Output<string>;
+  bucketName: pulumi.Output<string>;
+  serverFunctionUrl?: pulumi.Output<string>;
+  imageFunctionUrl?: pulumi.Output<string>;
+  serverFunctionArn?: pulumi.Output<string>;
+  imageFunctionArn?: pulumi.Output<string>;
 };

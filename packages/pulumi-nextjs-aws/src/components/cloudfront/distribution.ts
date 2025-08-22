@@ -1,7 +1,8 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
-import type { ComponentOptions, DomainConfig, CloudFrontLoggingConfig } from "../../types/index.js";
+import type { ComponentOptions, DomainConfig, CloudFrontLoggingConfig, CloudFrontSecurityConfig } from "../../types/index.js";
 import { createCachePolicies, createResponseHeadersPolicy, createViewerRequestFunction } from "./policies.js";
+import { createOriginAccessControl, createOACBucketPolicy, buildGeoRestriction, createCloudFrontAlarms } from "./security.js";
 
 export type CloudFrontArgs = {
   name: string;
@@ -14,7 +15,11 @@ export type CloudFrontArgs = {
   domain?: DomainConfig;
   priceClass?: string;
   logging?: CloudFrontLoggingConfig;
+  waitForDeployment?: boolean;
   tags?: Record<string, string>;
+  security?: CloudFrontSecurityConfig;
+  alarmEmail?: string;
+  useSharedPolicies?: boolean;
 };
 
 export type CloudFrontOutputs = {
@@ -39,16 +44,29 @@ export function createCloudFrontDistribution(
     domain,
     priceClass = "PriceClass_100",
     logging,
+    waitForDeployment = false,
     tags = {},
+    security,
+    alarmEmail,
+    useSharedPolicies = true,
   } = args;
 
-  // Origin Access Identity
-  const originAccessIdentity = new aws.cloudfront.OriginAccessIdentity(`${name}-oai`, {
-    comment: `OAI for ${name}`,
-  }, opts);
+  // Origin Access Control or Identity based on security config
+  const useOAC = security?.enableOriginAccessControl ?? false;
+  
+  let originAccessIdentity: aws.cloudfront.OriginAccessIdentity | undefined;
+  let originAccessControl: aws.cloudfront.OriginAccessControl | undefined;
+  
+  if (useOAC) {
+    originAccessControl = createOriginAccessControl(name, bucketArn, opts);
+  } else {
+    originAccessIdentity = new aws.cloudfront.OriginAccessIdentity(`${name}-oai`, {
+      comment: `OAI for ${name}`,
+    }, opts);
+  }
 
-  // Policies and Functions
-  const policies = createCachePolicies(name, opts);
+  // Policies and Functions (with shared policies support)
+  const policies = createCachePolicies(name, { ...opts, useSharedPolicies });
   const responseHeadersPolicy = createResponseHeadersPolicy(name, opts);
   const viewerRequestFunction = createViewerRequestFunction(name, opts);
 
@@ -93,9 +111,13 @@ export function createCloudFrontDistribution(
     originId: "static",
     domainName: bucketRegionalDomainName,
     originPath: "/_assets",
-    s3OriginConfig: {
-      originAccessIdentity: originAccessIdentity.cloudfrontAccessIdentityPath,
-    },
+    ...(useOAC ? {
+      originAccessControlId: originAccessControl!.id,
+    } : {
+      s3OriginConfig: {
+        originAccessIdentity: originAccessIdentity!.cloudfrontAccessIdentityPath,
+      },
+    }),
   });
 
   // Build cache behaviors
@@ -107,7 +129,7 @@ export function createCloudFrontDistribution(
       allowedMethods: ["GET", "HEAD"],
       cachedMethods: ["GET", "HEAD"],
       compress: true,
-      cachePolicyId: policies.staticAssetsOptimizedCache.id,
+      cachePolicyId: policies.staticAssetsOptimizedCache,
     },
     {
       pathPattern: "_next/data/*",
@@ -116,7 +138,7 @@ export function createCloudFrontDistribution(
       allowedMethods: ["GET", "HEAD"],
       cachedMethods: ["GET", "HEAD"],
       compress: true,
-      cachePolicyId: policies.serverCachePolicy.id,
+      cachePolicyId: policies.serverCachePolicy,
       originRequestPolicyId: policies.serverOriginRequestPolicy,
       functionAssociations: [{
         eventType: "viewer-request",
@@ -133,7 +155,7 @@ export function createCloudFrontDistribution(
       allowedMethods: ["GET", "HEAD"],
       cachedMethods: ["GET", "HEAD"],
       compress: true,
-      cachePolicyId: policies.serverCachePolicy.id,
+      cachePolicyId: policies.serverCachePolicy,
       originRequestPolicyId: policies.serverOriginRequestPolicy,
     });
   }
@@ -146,7 +168,7 @@ export function createCloudFrontDistribution(
       allowedMethods: ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
       cachedMethods: ["GET", "HEAD", "OPTIONS"],
       compress: true,
-      cachePolicyId: policies.serverCachePolicy.id,
+      cachePolicyId: policies.serverCachePolicy,
       originRequestPolicyId: policies.serverOriginRequestPolicy,
       responseHeadersPolicyId: responseHeadersPolicy.id,
       functionAssociations: [{
@@ -161,7 +183,7 @@ export function createCloudFrontDistribution(
       allowedMethods: ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
       cachedMethods: ["GET", "HEAD", "OPTIONS"],
       compress: true,
-      cachePolicyId: policies.serverCachePolicy.id,
+      cachePolicyId: policies.serverCachePolicy,
       originRequestPolicyId: policies.serverOriginRequestPolicy,
       responseHeadersPolicyId: responseHeadersPolicy.id,
       functionAssociations: [{
@@ -176,7 +198,7 @@ export function createCloudFrontDistribution(
       allowedMethods: ["GET", "HEAD"],
       cachedMethods: ["GET", "HEAD"],
       compress: true,
-      cachePolicyId: policies.staticAssetsOptimizedCache.id,
+      cachePolicyId: policies.staticAssetsOptimizedCache,
     }))
   );
 
@@ -186,7 +208,7 @@ export function createCloudFrontDistribution(
     httpVersion: "http3",
     isIpv6Enabled: true,
     priceClass,
-    waitForDeployment: true,
+    waitForDeployment,
     
     aliases: domain ? [domain.name] : [],
     viewerCertificate: domain?.certificateArn ? {
@@ -205,7 +227,7 @@ export function createCloudFrontDistribution(
       allowedMethods: ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
       cachedMethods: ["GET", "HEAD", "OPTIONS"],
       compress: true,
-      cachePolicyId: policies.serverCachePolicy.id,
+      cachePolicyId: policies.serverCachePolicy,
       originRequestPolicyId: policies.serverOriginRequestPolicy,
       responseHeadersPolicyId: responseHeadersPolicy.id,
       functionAssociations: [{
@@ -224,9 +246,7 @@ export function createCloudFrontDistribution(
     orderedCacheBehaviors,
     
     restrictions: {
-      geoRestriction: {
-        restrictionType: "none",
-      },
+      geoRestriction: buildGeoRestriction(security?.restrictGeoLocations),
     },
     
     customErrorResponses: [
@@ -273,34 +293,51 @@ export function createCloudFrontDistribution(
     tags,
   }, opts);
 
-  // S3 bucket policy for CloudFront
-  new aws.s3.BucketPolicy(`${name}-assets-policy`, {
-    bucket: bucketId,
-    policy: pulumi.all([bucketArn, originAccessIdentity.s3CanonicalUserId])
-      .apply(([arn, oaiUserId]) => JSON.stringify({
-        Version: "2012-10-17",
-        Statement: [
-          {
-            Sid: "AllowCloudFrontServicePrincipal",
-            Effect: "Allow",
-            Principal: {
-              CanonicalUser: oaiUserId,
+  // S3 bucket policy for CloudFront (OAC or OAI)
+  if (useOAC) {
+    // Create OAC bucket policy
+    createOACBucketPolicy(
+      name,
+      bucketId,
+      bucketArn,
+      distribution.arn,
+      opts
+    );
+  } else if (originAccessIdentity) {
+    // Create OAI bucket policy
+    new aws.s3.BucketPolicy(`${name}-assets-policy`, {
+      bucket: bucketId,
+      policy: pulumi.all([bucketArn, originAccessIdentity.s3CanonicalUserId])
+        .apply(([arn, oaiUserId]) => JSON.stringify({
+          Version: "2012-10-17",
+          Statement: [
+            {
+              Sid: "AllowCloudFrontServicePrincipal",
+              Effect: "Allow",
+              Principal: {
+                CanonicalUser: oaiUserId,
+              },
+              Action: "s3:GetObject",
+              Resource: `${arn}/*`,
             },
-            Action: "s3:GetObject",
-            Resource: `${arn}/*`,
-          },
-          {
-            Sid: "AllowCloudFrontServicePrincipalBucket",
-            Effect: "Allow",
-            Principal: {
-              CanonicalUser: oaiUserId,
+            {
+              Sid: "AllowCloudFrontServicePrincipalBucket",
+              Effect: "Allow",
+              Principal: {
+                CanonicalUser: oaiUserId,
+              },
+              Action: "s3:ListBucket",
+              Resource: arn,
             },
-            Action: "s3:ListBucket",
-            Resource: arn,
-          },
-        ],
-      })),
-  }, opts);
+          ],
+        })),
+    }, opts);
+  }
+  
+  // Create CloudWatch alarms if email is provided
+  if (alarmEmail) {
+    createCloudFrontAlarms(name, distribution.id, alarmEmail, opts);
+  }
 
   return {
     distribution,

@@ -1,5 +1,6 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
+import * as command from "@pulumi/command";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import { globSync } from "glob";
@@ -9,8 +10,8 @@ import type { ComponentOptions } from "../types/index.js";
 
 export type S3ComponentArgs = {
   name: string;
-  tags?: Record<string, string>;
   forceDestroy?: boolean;
+  tags?: Record<string, string>;
 };
 
 export type S3ComponentOutputs = {
@@ -18,55 +19,8 @@ export type S3ComponentOutputs = {
   bucketArn: pulumi.Output<string>;
   bucketName: pulumi.Output<string>;
   bucketRegionalDomainName: pulumi.Output<string>;
+  deploymentId: pulumi.Output<string>;
 };
-
-export function createS3Bucket(
-  args: S3ComponentArgs,
-  opts?: ComponentOptions
-): S3ComponentOutputs {
-  const { name, tags = {}, forceDestroy = true } = args;
-
-  // S3 Bucket for assets
-  const bucket = new aws.s3.BucketV2(`${name}-assets`, {
-    forceDestroy,
-    tags,
-  }, opts);
-
-  // Bucket versioning
-  new aws.s3.BucketVersioningV2(`${name}-assets-versioning`, {
-    bucket: bucket.id,
-    versioningConfiguration: {
-      status: "Enabled",
-    },
-  }, opts);
-
-  // Block public access
-  new aws.s3.BucketPublicAccessBlock(`${name}-assets-pab`, {
-    bucket: bucket.id,
-    blockPublicAcls: true,
-    blockPublicPolicy: true,
-    ignorePublicAcls: true,
-    restrictPublicBuckets: true,
-  }, opts);
-
-  // Server-side encryption
-  new aws.s3.BucketServerSideEncryptionConfigurationV2(`${name}-assets-encryption`, {
-    bucket: bucket.id,
-    rules: [{
-      applyServerSideEncryptionByDefault: {
-        sseAlgorithm: "AES256",
-      },
-      bucketKeyEnabled: true,
-    }],
-  }, opts);
-
-  return {
-    bucket,
-    bucketArn: bucket.arn,
-    bucketName: bucket.bucket,
-    bucketRegionalDomainName: bucket.bucketRegionalDomainName,
-  };
-}
 
 export type UploadAssetsArgs = {
   name: string;
@@ -77,14 +31,44 @@ export type UploadAssetsArgs = {
 
 export type UploadAssetsOutputs = {
   assetPathPatterns: string[];
+  uploadedFiles: pulumi.Output<string>[];
 };
+
+export function createS3Component(args: S3ComponentArgs, opts?: ComponentOptions): S3ComponentOutputs {
+  const { name, forceDestroy, tags } = args;
+
+  const bucket = new aws.s3.BucketV2(`${name}-assets`, {
+    forceDestroy,
+    tags,
+  }, opts);
+
+  // Public access configuration
+  new aws.s3.BucketPublicAccessBlock(`${name}-assets-pab`, {
+    bucket: bucket.id,
+    blockPublicAcls: false,
+    blockPublicPolicy: false,
+    ignorePublicAcls: false,
+    restrictPublicBuckets: false,
+  }, opts);
+
+  // Note: Bucket policy is created in CloudFront component to include OAI access
+
+  return {
+    bucket,
+    bucketArn: bucket.arn,
+    bucketName: bucket.bucket,
+    bucketRegionalDomainName: bucket.bucketRegionalDomainName,
+    deploymentId: bucket.id,
+  };
+}
 
 export function uploadAssets(
   args: UploadAssetsArgs,
   opts?: ComponentOptions
 ): UploadAssetsOutputs {
-  const { name, bucket, assetsPath, tags = {} } = args;
+  const { name, bucket, assetsPath } = args;
   const assetPathPatterns: string[] = [];
+  const uploadedFiles: pulumi.Output<string>[] = [];
 
   if (fs.existsSync(assetsPath)) {
     const files = globSync("**", {
@@ -95,6 +79,13 @@ export function uploadAssets(
     });
 
     const uniquePaths = new Set<string>();
+    const uploadTasks: {
+      file: string;
+      key: string;
+      cacheControl: string;
+      contentType: string;
+      hex: string;
+    }[] = [];
 
     for (const file of files) {
       const hex = crypto.createHash("sha256").update(file).digest("hex").substring(0, 8);
@@ -123,21 +114,71 @@ export function uploadAssets(
         cacheControl = "public,max-age=86400,s-maxage=2592000,must-revalidate";
       }
 
-      new aws.s3.BucketObject(`${name}-asset-${hex}`, {
-        bucket: bucket.id,
-        key,
-        source: new pulumi.asset.FileAsset(path.join(assetsPath, file)),
-        cacheControl,
-        contentType: mime.getType(file) || undefined,
-        tags,
-      }, opts);
+      // Get content type
+      const contentType = mime.getType(file) || "binary/octet-stream";
+
+      uploadTasks.push({ file, key, cacheControl, contentType, hex });
     }
 
     assetPathPatterns.push(...Array.from(uniquePaths).sort());
+
+    const totalFiles = uploadTasks.length;
+    console.log(`Creating ${totalFiles} S3 upload commands...`);
+
+    // Use Command provider to upload files with proper content-type
+    // Similar to Terraform's approach but batched for efficiency
+    const BATCH_SIZE = 10;
+    
+    for (let i = 0; i < uploadTasks.length; i += BATCH_SIZE) {
+      const batch = uploadTasks.slice(i, i + BATCH_SIZE);
+      const batchIndex = Math.floor(i / BATCH_SIZE);
+      
+      // Create a command that uploads multiple files
+      const uploadCommand = new command.local.Command(`${name}-assets-batch-${batchIndex}`, {
+        create: pulumi.all([bucket.bucket, aws.getRegion()]).apply(([bucketName, region]) => {
+          // First sync to delete old files (only on first batch)
+          const syncCommand = batchIndex === 0 
+            ? `aws s3 sync "${assetsPath}" "s3://${bucketName}/_assets" --delete --region "${region.name}" && ` 
+            : '';
+          
+          // Build multiple aws s3 cp commands joined with &&
+          const commands = batch.map(task => {
+            const source = path.join(assetsPath, task.file);
+            const target = `s3://${bucketName}/${task.key}`;
+            return `aws s3 cp "${source}" "${target}" --content-type "${task.contentType}" --cache-control "${task.cacheControl}" --region "${region.name}"`;
+          });
+          
+          return syncCommand + commands.join(' && ');
+        }),
+        update: pulumi.all([bucket.bucket, aws.getRegion()]).apply(([bucketName, region]) => {
+          // First sync to delete old files (only on first batch)
+          const syncCommand = batchIndex === 0 
+            ? `aws s3 sync "${assetsPath}" "s3://${bucketName}/_assets" --delete --region "${region.name}" && ` 
+            : '';
+          
+          // Same for updates
+          const commands = batch.map(task => {
+            const source = path.join(assetsPath, task.file);
+            const target = `s3://${bucketName}/${task.key}`;
+            return `aws s3 cp "${source}" "${target}" --content-type "${task.contentType}" --cache-control "${task.cacheControl}" --region "${region.name}"`;
+          });
+          
+          return syncCommand + commands.join(' && ');
+        }),
+        environment: {
+          AWS_PAGER: "", // Disable pager
+        },
+      }, { ...opts, dependsOn: [bucket] } as pulumi.ComponentResourceOptions);
+      
+      uploadedFiles.push(uploadCommand.stdout.apply(() => `batch-${batchIndex}`));
+    }
+
+    console.log(`Created ${Math.ceil(totalFiles / BATCH_SIZE)} batch upload commands.`);
   }
 
-  return { assetPathPatterns };
+  return { assetPathPatterns, uploadedFiles };
 }
+
 
 export function uploadErrorPage(
   name: string,
@@ -162,62 +203,57 @@ export function uploadErrorPage(
             justify-content: center;
             min-height: 100vh;
         }
-        .error-container {
+        .container {
             text-align: center;
-            padding: 2rem;
-            background: white;
+            padding: 40px;
+            background-color: white;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            max-width: 500px;
-            margin: 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: 0 20px;
         }
         h1 {
             color: #333;
-            font-size: 2.5rem;
-            margin: 0 0 1rem 0;
+            font-size: 48px;
+            margin: 0 0 16px 0;
+            font-weight: 600;
+        }
+        h2 {
+            color: #666;
+            font-size: 24px;
+            margin: 0 0 24px 0;
+            font-weight: 400;
         }
         p {
             color: #666;
-            font-size: 1.1rem;
+            font-size: 16px;
             line-height: 1.6;
-            margin: 0 0 1.5rem 0;
+            margin: 0 0 32px 0;
         }
-        .error-code {
+        .status-code {
             color: #999;
-            font-size: 0.9rem;
-            margin-top: 2rem;
-        }
-        .retry-button {
-            background-color: #0070f3;
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .retry-button:hover {
-            background-color: #0051cc;
+            font-size: 14px;
+            margin-top: 32px;
         }
     </style>
 </head>
 <body>
-    <div class="error-container">
-        <h1>Service Temporarily Unavailable</h1>
-        <p>We're experiencing high traffic or a temporary issue. Please try again in a moment.</p>
-        <button class="retry-button" onclick="window.location.reload()">Retry</button>
-        <div class="error-code">Error 504</div>
+    <div class="container">
+        <h1>503</h1>
+        <h2>Service Temporarily Unavailable</h2>
+        <p>We're currently performing maintenance on our servers. Please try again in a few moments.</p>
+        <p>If this problem persists, please contact our support team.</p>
+        <div class="status-code">Error Code: 503</div>
     </div>
 </body>
 </html>`;
 
   new aws.s3.BucketObject(`${name}-error-page`, {
     bucket: bucket.id,
-    key: "error.html",
+    key: "503.html",
     content: errorPageContent,
     contentType: "text/html",
-    cacheControl: "public,max-age=60,s-maxage=60",
+    cacheControl: "no-cache, no-store, must-revalidate",
     tags,
   }, opts);
 }

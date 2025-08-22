@@ -1,4 +1,4 @@
-# @repo/pulumi-nextjs-aws
+# @donswayo/pulumi-nextjs-aws
 
 A reusable Pulumi library for deploying Next.js applications to AWS using OpenNext v3.
 
@@ -16,7 +16,7 @@ A reusable Pulumi library for deploying Next.js applications to AWS using OpenNe
 ## Installation
 
 ```bash
-pnpm add @repo/pulumi-nextjs-aws
+pnpm add @donswayo/pulumi-nextjs-aws
 ```
 
 ## Usage
@@ -25,9 +25,9 @@ pnpm add @repo/pulumi-nextjs-aws
 
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
-import { OpenNextDeployment } from "@repo/pulumi-nextjs-aws";
+import { Next } from "@donswayo/pulumi-nextjs-aws";
 
-const site = new OpenNextDeployment("my-nextjs-app", {
+const site = new Next("my-nextjs-app", {
   appPath: "./apps/web",
   openNextPath: ".open-next",
   environment: {
@@ -44,9 +44,9 @@ export const distributionId = site.distributionId;
 
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
-import { OpenNextDeployment } from "@repo/pulumi-nextjs-aws";
+import { Next } from "@donswayo/pulumi-nextjs-aws";
 
-const site = new OpenNextDeployment("my-app", {
+const site = new Next("my-app", {
   appPath: "./apps/web",
   openNextPath: ".open-next",
   streaming: true,
@@ -92,9 +92,9 @@ const site = new OpenNextDeployment("my-app", {
 
 ## Prerequisites
 
-### 1. Configure Package Manager (Important for Monorepos)
+### 1. Configure Package Manager (Important for monorepo)
 
-If you're using pnpm in a monorepo, you must configure it to avoid symlinks for OpenNext compatibility.
+If you're using pnpm in a monodonswayo, you must configure it to avoid symlinks for OpenNext compatibility.
 
 Add this to your root `.npmrc`:
 ```
@@ -111,9 +111,9 @@ hoist=true
 
 This ensures that dependencies are copied as real files instead of symlinks, which is required for OpenNext bundling to work correctly.
 
-### 2. Configure Next.js for Monorepos
+### 2. Configure Next.js for Monorepo
 
-Add this to your `next.config.ts` for proper monorepo support:
+Add this to your `next.config.ts` for proper monodonswayo support:
 ```typescript
 import type { NextConfig } from "next";
 import path from "path";
@@ -121,7 +121,7 @@ import path from "path";
 const nextConfig: NextConfig = {
   output: "standalone",
 
-  transpilePackages: ["@repo/ui"], // Add your workspace packages
+  transpilePackages: ["@donswayo/ui"], // Add your workspace packages
 };
 
 export default nextConfig;
@@ -161,7 +161,7 @@ import {
   createS3Bucket, 
   createISRTable,
   createCloudFrontDistribution 
-} from "@repo/pulumi-nextjs-aws";
+} from "@donswayo/pulumi-nextjs-aws";
 
 const s3 = createS3Bucket({ name: "my-app", tags: {} });
 const dynamodb = createISRTable({ name: "my-app", tags: {} });

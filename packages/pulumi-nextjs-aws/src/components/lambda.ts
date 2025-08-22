@@ -30,6 +30,7 @@ export function createServerFunction(
   }
 
   const fn = new aws.lambda.Function(`${name}-server`, {
+    name: `${name}-server`,
     code: new pulumi.asset.FileArchive(functionPath),
     role: roleArn,
     handler: "index.handler",
@@ -95,6 +96,7 @@ export function createImageFunction(
   }
 
   const fn = new aws.lambda.Function(`${name}-image`, {
+    name: `${name}-image`,
     code: new pulumi.asset.FileArchive(functionPath),
     role: roleArn,
     handler: "index.handler",
@@ -149,6 +151,7 @@ export function createRevalidationFunction(
   }
 
   const fn = new aws.lambda.Function(`${name}-revalidation`, {
+    name: `${name}-revalidation`,
     code: new pulumi.asset.FileArchive(functionPath),
     role: roleArn,
     handler: "index.handler",
@@ -191,6 +194,7 @@ export function createWarmerFunction(
   }
 
   const fn = new aws.lambda.Function(`${name}-warmer`, {
+    name: `${name}-warmer`,
     code: new pulumi.asset.FileArchive(functionPath),
     role: roleArn,
     handler: "index.handler",

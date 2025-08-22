@@ -3,7 +3,7 @@ import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 
 import type { NextArgs } from "./types/index.js";
-import { createS3Bucket, uploadAssets, uploadErrorPage } from "./components/s3.js";
+import { createS3Component, uploadAssets, uploadErrorPage } from "./components/s3.js";
 import { createISRTable } from "./components/dynamodb.js";
 import { createRevalidationQueue } from "./components/sqs.js";
 import { 
@@ -25,6 +25,12 @@ export class Next extends pulumi.ComponentResource {
   public readonly url: pulumi.Output<string>;
   public readonly distributionId: pulumi.Output<string>;
   public readonly bucketName: pulumi.Output<string>;
+  public readonly serverFunctionUrl?: pulumi.Output<string>;
+  public readonly imageFunctionUrl?: pulumi.Output<string>;
+  public readonly serverFunctionArn?: pulumi.Output<string>;
+  public readonly imageFunctionArn?: pulumi.Output<string>;
+  public readonly serverRoleArn?: pulumi.Output<string>;
+  public readonly serverRoleName?: pulumi.Output<string>;
 
   constructor(
     name: string,
@@ -39,6 +45,7 @@ export class Next extends pulumi.ComponentResource {
     const openNextPath = args.openNextPath ?? ".open-next";
     const streaming = args.streaming ?? true;
     const priceClass = args.priceClass ?? "PriceClass_100";
+    const waitForDeployment = args.waitForDeployment ?? true;
     const tags = args.tags ?? {};
 
     const lambdaConfig = {
@@ -69,7 +76,7 @@ export class Next extends pulumi.ComponentResource {
     const region = aws.getRegion({});
     const regionName = pulumi.output(region).apply(r => r.name);
 
-    const s3 = createS3Bucket({ name, tags }, defaultOptions);
+    const s3 = createS3Component({ name, tags }, defaultOptions);
 
     const { assetPathPatterns } = uploadAssets({
       name,
@@ -135,8 +142,8 @@ export class Next extends pulumi.ComponentResource {
       tags,
     }, { ...defaultOptions, dependsOn: [revalidationRole.role] } as pulumi.ComponentResourceOptions);
 
-    // Create warmer function if server function exists
-    if (serverFunctionResult?.function) {
+    // Create warmer function if server function exists and warmer is not disabled
+    if (serverFunctionResult?.function && args.lambda?.warmer?.enabled !== false) {
       const warmerRole = createWarmerRole(
         name,
         serverFunctionResult.function.arn,
@@ -166,17 +173,38 @@ export class Next extends pulumi.ComponentResource {
       domain: args.domain,
       priceClass,
       logging: args.cloudFrontLogging,
+      waitForDeployment,
       tags,
     }, defaultOptions);
+
 
     this.url = cloudfront.url;
     this.distributionId = cloudfront.distributionId;
     this.bucketName = s3.bucketName;
+    
+    if (serverFunctionResult?.functionUrl) {
+      this.serverFunctionUrl = serverFunctionResult.functionUrl.functionUrl;
+      this.serverFunctionArn = serverFunctionResult.function.arn;
+    }
+    
+    if (imageFunctionResult?.functionUrl) {
+      this.imageFunctionUrl = imageFunctionResult.functionUrl.functionUrl;
+      this.imageFunctionArn = imageFunctionResult.function.arn;
+    }
+
+    this.serverRoleArn = serverRole.roleArn;
+    this.serverRoleName = serverRole.role.name;
 
     this.registerOutputs({
       url: this.url,
       distributionId: this.distributionId,
       bucketName: this.bucketName,
+      serverFunctionUrl: this.serverFunctionUrl,
+      imageFunctionUrl: this.imageFunctionUrl,
+      serverFunctionArn: this.serverFunctionArn,
+      imageFunctionArn: this.imageFunctionArn,
+      serverRoleArn: this.serverRoleArn,
+      serverRoleName: this.serverRoleName,
     });
   }
 }
