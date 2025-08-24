@@ -1,8 +1,52 @@
 <script>
   let count = 0;
+  let apiResponse = null;
+  let apiError = null;
   
   function increment() {
     count += 1;
+  }
+  
+  async function testHealthApi() {
+    apiResponse = null;
+    apiError = null;
+    try {
+      const response = await fetch('/api/health');
+      apiResponse = await response.json();
+    } catch (error) {
+      apiError = error.message;
+    }
+  }
+  
+  async function testEchoApi() {
+    apiResponse = null;
+    apiError = null;
+    try {
+      const response = await fetch('/api/echo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: 'Hello from SvelteKit!',
+          timestamp: new Date().toISOString()
+        })
+      });
+      apiResponse = await response.json();
+    } catch (error) {
+      apiError = error.message;
+    }
+  }
+  
+  async function testUserApi() {
+    apiResponse = null;
+    apiError = null;
+    try {
+      const response = await fetch('/api/users/1');
+      apiResponse = await response.json();
+    } catch (error) {
+      apiError = error.message;
+    }
   }
 </script>
 
@@ -70,6 +114,43 @@
         >
           Click Me!
         </button>
+      </div>
+    </div>
+
+    <!-- API Test Section -->
+    <div class="bg-white/95 backdrop-blur-sm rounded-xl p-8 shadow-xl max-w-2xl mx-auto mb-16">
+      <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">API Routes Test</h2>
+      <div class="space-y-4">
+        <button 
+          on:click={testHealthApi}
+          class="w-full px-6 py-3 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition-colors duration-200"
+        >
+          Test Health API
+        </button>
+        <button 
+          on:click={testEchoApi}
+          class="w-full px-6 py-3 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition-colors duration-200"
+        >
+          Test Echo API
+        </button>
+        <button 
+          on:click={testUserApi}
+          class="w-full px-6 py-3 bg-purple-500 text-white rounded-lg font-semibold hover:bg-purple-600 transition-colors duration-200"
+        >
+          Test User API
+        </button>
+        {#if apiResponse}
+          <div class="mt-4 p-4 bg-gray-100 rounded-lg">
+            <h3 class="font-bold text-gray-700 mb-2">API Response:</h3>
+            <pre class="text-sm text-gray-600 overflow-x-auto">{JSON.stringify(apiResponse, null, 2)}</pre>
+          </div>
+        {/if}
+        {#if apiError}
+          <div class="mt-4 p-4 bg-red-100 rounded-lg">
+            <h3 class="font-bold text-red-700 mb-2">API Error:</h3>
+            <pre class="text-sm text-red-600">{apiError}</pre>
+          </div>
+        {/if}
       </div>
     </div>
 
