@@ -98,7 +98,7 @@ export function uploadStaticAssets(
           `${name}-static-${key.replace(/[^a-zA-Z0-9]/g, "-")}`,
           {
             bucket: bucket.id,
-            key: `_app/${key}`,
+            key,
             source: new pulumi.asset.FileAsset(filePath),
             contentType,
             etag: readFileSync(filePath, 'utf-8').length.toString(),
