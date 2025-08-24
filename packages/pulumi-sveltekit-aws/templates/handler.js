@@ -1,5 +1,5 @@
 import { installPolyfills } from '@sveltejs/kit/node/polyfills';
-import { Server } from '__SERVER_DIR__/index.js';
+import { Server } from './index.js';
 import { manifest } from './manifest.js';
 
 installPolyfills();

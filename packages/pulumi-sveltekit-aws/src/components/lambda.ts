@@ -1,6 +1,5 @@
 import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
-import { join } from "path";
 
 export interface CreateServerFunctionArgs {
   name: string;
@@ -13,15 +12,6 @@ export interface CreateServerFunctionArgs {
   tags?: Record<string, string>;
 }
 
-function createLambdaPackage(serverPath: string): pulumi.asset.AssetArchive {
-  // Create AssetArchive with the SvelteKit server bundle and package.json for ES modules
-  return new pulumi.asset.AssetArchive({
-    "index.js": new pulumi.asset.FileAsset(join(serverPath, 'index.js')),
-    "package.json": new pulumi.asset.StringAsset(JSON.stringify({
-      "type": "module"
-    }))
-  });
-}
 
 export function createServerFunction(
   args: CreateServerFunctionArgs,
@@ -38,13 +28,15 @@ export function createServerFunction(
     tags = {},
   } = args;
   
-  const lambdaPackage = createLambdaPackage(serverPath);
+  // Use FileArchive to package the entire server directory
+  // Dependencies should be installed during build process in adapter/build.ts
+  const lambdaPackage = new pulumi.asset.FileArchive(serverPath);
   
   const lambda = new aws.lambda.Function(
     `${name}-server`,
     {
       runtime: "nodejs20.x",
-      handler: "index.handler",
+      handler: "handler.handler",
       role: roleArn,
       memorySize: memory,
       timeout,

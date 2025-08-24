@@ -131,7 +131,22 @@ export function createCloudFrontDistribution(
         minTtl: 0,
         forwardedValues: {
           queryString: true,
-          headers: ["*"],
+          headers: [
+            "Accept",
+            "Accept-Encoding", 
+            "Accept-Language",
+            "Authorization",
+            "CloudFront-Forwarded-Proto",
+            "CloudFront-Is-Desktop-Viewer",
+            "CloudFront-Is-Mobile-Viewer",
+            "CloudFront-Is-SmartTV-Viewer",
+            "CloudFront-Is-Tablet-Viewer",
+            "CloudFront-Viewer-Country",
+            "Origin",
+            "Referer",
+            "User-Agent",
+            "X-Forwarded-For"
+          ],
           cookies: {
             forward: "all",
           },
