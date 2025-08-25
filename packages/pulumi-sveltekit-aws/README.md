@@ -1,4 +1,4 @@
-# @repo/pulumi-sveltekit-aws
+# @donswayo/pulumi-sveltekit-aws
 
 A SvelteKit adapter and Pulumi library for deploying SvelteKit applications to AWS using Lambda, S3, and CloudFront.
 
@@ -14,7 +14,7 @@ A SvelteKit adapter and Pulumi library for deploying SvelteKit applications to A
 ## Installation
 
 ```bash
-pnpm add @repo/pulumi-sveltekit-aws
+pnpm add @donswayo/pulumi-sveltekit-aws
 ```
 
 ## Usage
@@ -24,7 +24,7 @@ pnpm add @repo/pulumi-sveltekit-aws
 In your `svelte.config.js`:
 
 ```javascript
-import adapter from '@repo/pulumi-sveltekit-aws/adapter';
+import adapter from '@donswayo/pulumi-sveltekit-aws/adapter';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {

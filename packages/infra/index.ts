@@ -1,6 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import { Next } from "@donswayo/pulumi-nextjs-aws";
-import { SvelteKitAwsDeployment } from "@repo/pulumi-sveltekit-aws";
+import { SvelteKitAwsDeployment } from "@donswayo/pulumi-sveltekit-aws";
 
 const config = new pulumi.Config();
 const stack = pulumi.getStack();

@@ -1,5 +1,5 @@
 {
-  "name": "@repo/pulumi-sveltekit-aws",
+  "name": "@donswayo/pulumi-sveltekit-aws",
   "version": "0.1.0",
   "description": "SvelteKit adapter and Pulumi components for deploying to AWS",
   "type": "module",

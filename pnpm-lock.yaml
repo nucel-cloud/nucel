@@ -28,7 +28,7 @@ importers:
         version: 11.6.10(acorn@8.15.0)(fumadocs-core@15.6.3(@types/react@19.1.8)(next@15.3.4(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(next@15.3.4(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
       fumadocs-ui:
         specifier: 15.6.3
-        version: 15.6.3(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(next@15.3.4(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.1.11)
+        version: 15.6.3(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(next@15.3.4(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.1.12)
       next:
         specifier: 15.3.4
         version: 15.3.4(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -65,14 +65,14 @@ importers:
         version: 8.5.6
       tailwindcss:
         specifier: ^4.1.11
-        version: 4.1.11
+        version: 4.1.12
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
 
   apps/sveltekit:
     devDependencies:
-      '@repo/pulumi-sveltekit-aws':
+      '@donswayo/pulumi-sveltekit-aws':
         specifier: workspace:*
         version: link:../../packages/pulumi-sveltekit-aws
       '@sveltejs/adapter-auto':
@@ -159,7 +159,7 @@ importers:
         version: 8.5.6
       tailwindcss:
         specifier: ^4.1.5
-        version: 4.1.11
+        version: 4.1.12
       typescript:
         specifier: 5.8.2
         version: 5.8.2
@@ -205,15 +205,15 @@ importers:
       '@donswayo/pulumi-nextjs-aws':
         specifier: workspace:*
         version: link:../pulumi-nextjs-aws
+      '@donswayo/pulumi-sveltekit-aws':
+        specifier: workspace:*
+        version: link:../pulumi-sveltekit-aws
       '@pulumi/aws':
         specifier: ^6.0.0
         version: 6.83.0(typescript@5.8.3)
       '@pulumi/pulumi':
         specifier: ^3.0.0
         version: 3.182.0(typescript@5.8.3)
-      '@repo/pulumi-sveltekit-aws':
-        specifier: workspace:*
-        version: link:../pulumi-sveltekit-aws
     devDependencies:
       '@repo/typescript-config':
         specifier: workspace:*
@@ -303,7 +303,7 @@ importers:
         version: 8.5.6
       tailwindcss:
         specifier: ^4.1.5
-        version: 4.1.11
+        version: 4.1.12
 
   packages/typescript-config: {}
 
@@ -333,7 +333,7 @@ importers:
         version: 9.31.0(jiti@2.5.1)
       tailwindcss:
         specifier: ^4.1.5
-        version: 4.1.11
+        version: 4.1.12
       typescript:
         specifier: 5.8.2
         version: 5.8.2
@@ -11106,7 +11106,7 @@ snapshots:
       - acorn
       - supports-color
 
-  fumadocs-ui@15.6.3(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(next@15.3.4(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.1.11):
+  fumadocs-ui@15.6.3(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(next@15.3.4(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(tailwindcss@4.1.12):
     dependencies:
       '@radix-ui/react-accordion': 1.2.11(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@radix-ui/react-collapsible': 1.1.11(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -11131,7 +11131,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.1.8
       next: 15.3.4(@opentelemetry/api@1.9.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
-      tailwindcss: 4.1.11
+      tailwindcss: 4.1.12
     transitivePeerDependencies:
       - '@oramacloud/client'
       - '@types/react-dom'

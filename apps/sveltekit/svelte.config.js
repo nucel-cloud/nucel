@@ -1,4 +1,4 @@
-import adapter from '@repo/pulumi-sveltekit-aws/adapter';
+import adapter from '@donswayo/pulumi-sveltekit-aws/adapter';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
