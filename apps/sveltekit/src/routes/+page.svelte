@@ -1,7 +1,7 @@
-<script>
+<script lang="ts">
   let count = 0;
-  let apiResponse = null;
-  let apiError = null;
+  let apiResponse: Record<string, unknown> | null = null;
+  let apiError: string | null = null;
   
   function increment() {
     count += 1;
@@ -14,7 +14,7 @@
       const response = await fetch('/api/health');
       apiResponse = await response.json();
     } catch (error) {
-      apiError = error.message;
+      apiError = error instanceof Error ? error.message : 'An unknown error occurred';
     }
   }
   
@@ -34,7 +34,7 @@
       });
       apiResponse = await response.json();
     } catch (error) {
-      apiError = error.message;
+      apiError = error instanceof Error ? error.message : 'An unknown error occurred';
     }
   }
   
@@ -45,7 +45,7 @@
       const response = await fetch('/api/users/1');
       apiResponse = await response.json();
     } catch (error) {
-      apiError = error.message;
+      apiError = error instanceof Error ? error.message : 'An unknown error occurred';
     }
   }
 </script>
