@@ -1,6 +1,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import { Next } from "@donswayo/pulumi-nextjs-aws";
 import { SvelteKitAwsDeployment } from "@donswayo/pulumi-sveltekit-aws";
+import { ReactRouterAwsDeployment } from "@donswayo/pulumi-react-router-aws";
 
 const config = new pulumi.Config();
 const stack = pulumi.getStack();
@@ -52,10 +53,20 @@ const stackConfigs = {
       architecture: 'arm64' as const,
     },
   },
+  'react-router': {
+    appPath: "../../apps/react-router",
+    appName: "React Router App",
+    buildPath: "../../apps/react-router/.react-router-aws",
+    lambda: {
+      memory: 512,
+      timeout: 30,
+      architecture: 'arm64' as const,
+    },
+  },
 };
 
 if (!stackConfigs.hasOwnProperty(stack)) {
-  throw new Error(`Unknown stack: ${stack}. Use 'docs', 'web' or 'sveltekit'`);
+  throw new Error(`Unknown stack: ${stack}. Use 'docs', 'web', 'sveltekit' or 'react-router'`);
 }
 
 const stackConfig = stackConfigs[stack as keyof typeof stackConfigs];
@@ -63,6 +74,25 @@ const stackConfig = stackConfigs[stack as keyof typeof stackConfigs];
 // SvelteKit deployment
 if (stack === 'sveltekit') {
   const app = new SvelteKitAwsDeployment(stack, {
+    buildPath: (stackConfig as any).buildPath,
+    environment: {
+      NODE_ENV: "production",
+      PUBLIC_APP_NAME: stackConfig.appName,
+    },
+    lambda: (stackConfig as any).lambda,
+    priceClass: isProduction ? "PriceClass_All" : "PriceClass_100",
+    tags: {
+      ...commonTags,
+      Application: stack,
+    },
+  });
+  
+  exports.url = app.url;
+  exports.distributionId = app.distributionId;
+  exports.bucketName = app.bucketName;
+} else if (stack === 'react-router') {
+  // React Router deployment
+  const app = new ReactRouterAwsDeployment(stack, {
     buildPath: (stackConfig as any).buildPath,
     environment: {
       NODE_ENV: "production",
