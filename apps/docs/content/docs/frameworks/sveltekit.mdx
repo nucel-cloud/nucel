@@ -1,0 +1,647 @@
+---
+title: SvelteKit Deployment Guide
+description: Complete guide for deploying SvelteKit applications to AWS
+---
+
+# SvelteKit Deployment Guide
+
+Deploy SvelteKit 2+ applications to AWS with full SSR, SSG, and API route support.
+
+## Overview
+
+Our SvelteKit deployment uses a custom adapter that transforms your application into a serverless architecture optimized for AWS Lambda and CloudFront.
+
+### Supported Features
+
+✅ **Server-Side Rendering (SSR)**  
+✅ **Static Site Generation (SSG)**  
+✅ **API Routes & Endpoints**  
+✅ **Form Actions**  
+✅ **Load Functions**  
+✅ **Hooks (handle, handleError)**  
+✅ **Dynamic Routes**  
+✅ **Prerendering**  
+✅ **Service Workers**  
+✅ **TypeScript Support**  
+
+## Installation
+
+### Prerequisites
+
+```bash
+# Required versions
+node >= 22.0.0
+pnpm >= 10.11.0
+@sveltejs/kit >= 2.0.0
+```
+
+### Package Installation
+
+```bash
+# Install the deployment package
+pnpm add -D @donswayo/pulumi-sveltekit-aws
+```
+
+## Configuration
+
+### Adapter Configuration
+
+```javascript
+// svelte.config.js
+import adapter from '@donswayo/pulumi-sveltekit-aws/adapter';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
+  preprocess: vitePreprocess(),
+  
+  kit: {
+    adapter: adapter({
+      // Output directory for build
+      out: '.svelte-kit-aws',
+      
+      // Precompress static assets
+      precompress: false,
+      
+      // Environment variable prefix filter
+      envPrefix: '',
+      
+      // Add Node.js polyfills for Lambda
+      polyfill: true,
+    }),
+    
+    // Optional: Configure prerendering
+    prerender: {
+      handleHttpError: 'warn',
+      handleMissingId: 'warn',
+    },
+  },
+};
+
+export default config;
+```
+
+### Environment Variables
+
+SvelteKit uses the `PUBLIC_` prefix for client-side variables:
+
+```typescript
+// Server-side only
+import { env } from '$env/dynamic/private';
+console.log(env.DATABASE_URL);
+
+// Client-side (PUBLIC_ prefix)
+import { env } from '$env/dynamic/public';
+console.log(env.PUBLIC_API_URL);
+```
+
+## Deployment Setup
+
+### Basic Deployment
+
+```typescript
+// infra/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import { SvelteKitAwsDeployment } from "@donswayo/pulumi-sveltekit-aws";
+
+const app = new SvelteKitAwsDeployment("my-sveltekit-app", {
+  // Path to adapter build output
+  buildPath: "./apps/web/.svelte-kit-aws",
+  
+  // Environment variables
+  environment: {
+    NODE_ENV: "production",
+    PUBLIC_API_URL: "https://api.example.com",
+    DATABASE_URL: process.env.DATABASE_URL!,
+  },
+});
+
+export const url = app.url;
+export const distributionId = app.distributionId;
+```
+
+### Advanced Configuration
+
+```typescript
+// infra/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import { SvelteKitAwsDeployment } from "@donswayo/pulumi-sveltekit-aws";
+
+const app = new SvelteKitAwsDeployment("production-app", {
+  buildPath: ".svelte-kit-aws",
+  
+  // Lambda configuration
+  lambda: {
+    memory: 1024,              // 1GB RAM
+    timeout: 30,               // 30 seconds
+    architecture: "arm64",     // ARM for cost savings
+    environment: {
+      // Lambda-specific env vars
+      MAX_CONNECTIONS: "50",
+    },
+  },
+  
+  // Custom domain
+  domain: {
+    name: "app.example.com",
+    certificateArn: "arn:aws:acm:us-east-1:123456789012:certificate/...",
+  },
+  
+  // CloudFront configuration
+  priceClass: "PriceClass_200",  // US, Canada, Europe, Asia
+  
+  // Resource tags
+  tags: {
+    Environment: "production",
+    Team: "frontend",
+    Framework: "sveltekit",
+  },
+});
+
+export const url = app.url;
+export const distributionId = app.distributionId;
+export const bucketName = app.bucketName;
+export const functionArn = app.functionArn;
+```
+
+## Building Your Application
+
+### Development Build
+
+```bash
+# Standard SvelteKit build
+pnpm build
+
+# This runs the adapter and creates .svelte-kit-aws/
+```
+
+### Production Build
+
+```bash
+# Clean previous builds
+rm -rf .svelte-kit-aws build
+
+# Install production dependencies
+pnpm install --frozen-lockfile
+
+# Build with adapter
+pnpm build
+
+# Output will be in .svelte-kit-aws/
+```
+
+### Build Output Structure
+
+```
+.svelte-kit-aws/
+├── server/                   # Lambda function
+│   ├── handler.js           # Lambda entry point
+│   ├── index.js             # SvelteKit server
+│   └── node_modules/        # Dependencies
+├── static/                   # Static assets
+│   ├── _app/               # App assets
+│   └── favicon.png         # Public files
+├── prerendered/             # Prerendered pages
+│   ├── index.html
+│   └── about.html
+└── metadata.json            # Deployment metadata
+```
+
+## Features Guide
+
+### Server-Side Rendering (SSR)
+
+Pages are rendered on-demand by Lambda:
+
+```typescript
+// +page.server.ts
+import type { PageServerLoad } from './$types';
+
+export const load: PageServerLoad = async ({ params, fetch }) => {
+  // This runs on Lambda
+  const response = await fetch(`/api/posts/${params.id}`);
+  const post = await response.json();
+  
+  return {
+    post,
+    timestamp: Date.now(), // Dynamic data
+  };
+};
+```
+
+### API Routes
+
+Create serverless API endpoints:
+
+```typescript
+// +server.ts
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+
+export const GET: RequestHandler = async ({ url }) => {
+  // Runs on Lambda
+  const data = await fetchData();
+  
+  return json(data, {
+    headers: {
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+};
+
+export const POST: RequestHandler = async ({ request }) => {
+  const body = await request.json();
+  const result = await processData(body);
+  
+  return json(result);
+};
+```
+
+### Form Actions
+
+Server-side form handling:
+
+```typescript
+// +page.server.ts
+import type { Actions } from './$types';
+
+export const actions = {
+  create: async ({ request }) => {
+    const data = await request.formData();
+    const title = data.get('title');
+    const content = data.get('content');
+    
+    // Process on Lambda
+    await db.post.create({
+      data: { title, content },
+    });
+    
+    return { success: true };
+  },
+  
+  delete: async ({ params }) => {
+    await db.post.delete({
+      where: { id: params.id },
+    });
+    
+    throw redirect(303, '/posts');
+  },
+} satisfies Actions;
+```
+
+### Prerendering
+
+Static generation at build time:
+
+```typescript
+// +page.ts
+export const prerender = true;  // Prerender this page
+
+// Or in +layout.ts for entire routes
+export const prerender = true;
+
+// Conditional prerendering
+export const prerender = 'auto';  // Let SvelteKit decide
+```
+
+### Hooks
+
+Request/response middleware:
+
+```typescript
+// hooks.server.ts
+import type { Handle } from '@sveltejs/kit';
+
+export const handle: Handle = async ({ event, resolve }) => {
+  // Add custom headers
+  event.locals.user = await getUser(event.cookies.get('session'));
+  
+  const response = await resolve(event);
+  
+  response.headers.set('X-Custom-Header', 'value');
+  
+  return response;
+};
+
+// Error handling
+export const handleError = ({ error, event }) => {
+  console.error('Error:', error);
+  
+  return {
+    message: 'Internal Server Error',
+    code: 'INTERNAL_ERROR',
+  };
+};
+```
+
+### Static Assets
+
+Serve files from the static directory:
+
+```
+static/
+├── favicon.png
+├── robots.txt
+└── images/
+    └── logo.svg
+```
+
+These are uploaded to S3 and served via CloudFront.
+
+## Performance Optimization
+
+### 1. Lambda Optimization
+
+```typescript
+lambda: {
+  // Use ARM64 for better price-performance
+  architecture: "arm64",
+  
+  // Increase memory for faster processing
+  memory: 1536,
+  
+  // Appropriate timeout
+  timeout: 20,
+}
+```
+
+### 2. Caching Strategy
+
+```typescript
+// +server.ts
+export const GET: RequestHandler = async () => {
+  const data = await fetchData();
+  
+  return json(data, {
+    headers: {
+      // Cache in CloudFront for 1 hour
+      'Cache-Control': 'public, max-age=3600',
+      // Stale-while-revalidate
+      'CDN-Cache-Control': 'max-age=3600, stale-while-revalidate=86400',
+    },
+  });
+};
+```
+
+### 3. Prerendering
+
+```javascript
+// svelte.config.js
+export default {
+  kit: {
+    prerender: {
+      // Prerender all possible pages
+      entries: ['*'],
+      
+      // Handle dynamic routes
+      handleHttpError: ({ path, referrer, message }) => {
+        // Ignore 404s for dynamic routes
+        if (message.includes('404')) return;
+        throw new Error(message);
+      },
+    },
+  },
+};
+```
+
+### 4. Asset Optimization
+
+```javascript
+// vite.config.js
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [sveltekit()],
+  build: {
+    // Optimize chunks
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['svelte', '@sveltejs/kit'],
+        },
+      },
+    },
+    // Minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+      },
+    },
+  },
+});
+```
+
+## Monitoring & Debugging
+
+### CloudWatch Logs
+
+```bash
+# View Lambda logs
+aws logs tail /aws/lambda/my-sveltekit-app --follow
+
+# Search for errors
+aws logs filter-log-events \
+  --log-group-name /aws/lambda/my-sveltekit-app \
+  --filter-pattern "ERROR"
+```
+
+### Custom Logging
+
+```typescript
+// Use console methods (sent to CloudWatch)
+console.log('Info:', data);
+console.error('Error:', error);
+
+// Structured logging
+console.log(JSON.stringify({
+  level: 'info',
+  message: 'Request processed',
+  requestId: event.requestId,
+  duration: Date.now() - start,
+}));
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Module Not Found
+
+**Problem**: Dependencies missing in Lambda
+```
+Cannot find module 'some-package'
+```
+
+**Solution**: Ensure dependencies are in `dependencies`, not `devDependencies`:
+```json
+{
+  "dependencies": {
+    "some-package": "^1.0.0"
+  }
+}
+```
+
+#### 2. Function Size Too Large
+
+**Problem**: Lambda package exceeds limit
+
+**Solution**: Optimize dependencies:
+```javascript
+// vite.config.js
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      external: ['aws-sdk'], // Exclude AWS SDK (provided by Lambda)
+    },
+  },
+});
+```
+
+#### 3. Environment Variables Not Available
+
+**Problem**: Env vars undefined
+
+**Solution**: Check prefix and deployment config:
+```typescript
+// Client-side must use PUBLIC_ prefix
+PUBLIC_API_URL: "https://api.example.com"
+
+// Server-side can use any name
+DATABASE_URL: "postgresql://..."
+```
+
+#### 4. Form Actions Not Working
+
+**Problem**: Forms not submitting properly
+
+**Solution**: Ensure progressive enhancement:
+```svelte
+<form method="POST" action="?/create" use:enhance>
+  <!-- Form fields -->
+</form>
+```
+
+## Best Practices
+
+### 1. Database Connections
+
+```typescript
+// lib/db.ts
+import { dev } from '$app/environment';
+
+// Singleton pattern for Lambda
+let db: DatabaseConnection;
+
+export function getDB() {
+  if (!db) {
+    db = createConnection({
+      // Connection pooling for Lambda
+      max: 5,
+      idleTimeoutMillis: 30000,
+    });
+  }
+  return db;
+}
+```
+
+### 2. Error Handling
+
+```typescript
+// +page.server.ts
+import { error } from '@sveltejs/kit';
+
+export const load = async () => {
+  try {
+    const data = await fetchData();
+    return { data };
+  } catch (err) {
+    console.error('Load error:', err);
+    throw error(500, 'Failed to load data');
+  }
+};
+```
+
+### 3. Security Headers
+
+```typescript
+// hooks.server.ts
+export const handle: Handle = async ({ event, resolve }) => {
+  const response = await resolve(event);
+  
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  return response;
+};
+```
+
+## Migration from Vercel/Netlify
+
+### 1. Update Adapter
+
+```javascript
+// svelte.config.js
+// Remove Vercel/Netlify adapter
+// import adapter from '@sveltejs/adapter-vercel';
+
+// Add our adapter
+import adapter from '@donswayo/pulumi-sveltekit-aws/adapter';
+```
+
+### 2. Environment Variables
+
+```bash
+# Copy from Vercel/Netlify
+vercel env pull .env.production
+
+# Update deployment config
+environment: {
+  // Add all env vars
+}
+```
+
+### 3. Update Build Commands
+
+```json
+// package.json
+{
+  "scripts": {
+    "build": "vite build",
+    "deploy": "pulumi up"
+  }
+}
+```
+
+## Cost Optimization
+
+### Typical Costs (1M requests/month)
+
+| Component | Cost | Notes |
+|-----------|------|-------|
+| Lambda Compute | $5-10 | With ARM64 |
+| Lambda Requests | $2 | $0.20 per 1M |
+| CloudFront Transfer | $10-20 | Varies by region |
+| S3 Storage | $1-2 | Static assets |
+| **Total** | **$18-34/month** | |
+
+### Cost Reduction Tips
+
+1. **Use Prerendering**: Reduce Lambda invocations
+2. **Enable Caching**: CloudFront reduces origin requests
+3. **Optimize Images**: Reduce bandwidth costs
+4. **Use ARM64**: 20% cheaper than x86
+5. **Set Appropriate Timeouts**: Avoid unnecessary compute time
+
+## Conclusion
+
+The SvelteKit deployment platform provides:
+- ✅ Full SvelteKit feature support
+- ✅ Automatic scaling
+- ✅ Global performance with CloudFront
+- ✅ Cost-efficient serverless architecture
+- ✅ Simple configuration and deployment
+
+Ready to deploy? Check out our [Quick Start Guide](/docs/quickstart) or explore [configuration options](/docs/configuration).

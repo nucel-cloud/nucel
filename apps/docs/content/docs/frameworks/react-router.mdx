@@ -1,0 +1,743 @@
+---
+title: React Router v7 Deployment Guide
+description: Complete guide for deploying React Router v7 (Remix) applications to AWS
+---
+
+# React Router v7 Deployment Guide
+
+Deploy React Router v7 applications (the evolution of Remix v2) to AWS with full SSR, streaming, and data loading support.
+
+## Overview
+
+React Router v7 represents the next generation of Remix, bringing the same powerful features with improved APIs and patterns. Our deployment solution transforms your React Router application into a serverless architecture optimized for AWS.
+
+### Supported Features
+
+✅ **Server-Side Rendering (SSR)**  
+✅ **Streaming Responses**  
+✅ **Loaders & Actions**  
+✅ **Nested Routes**  
+✅ **Progressive Enhancement**  
+✅ **Error Boundaries**  
+✅ **Meta Tags & SEO**  
+✅ **Form Handling**  
+✅ **Data Mutations**  
+✅ **Deferred Data Loading**  
+
+## Installation
+
+### Prerequisites
+
+```bash
+# Required versions
+node >= 22.0.0
+pnpm >= 10.11.0
+react-router >= 7.0.0
+```
+
+### Package Installation
+
+```bash
+# Install the deployment package
+pnpm add -D @donswayo/pulumi-react-router-aws
+```
+
+## Configuration
+
+### Adapter Configuration
+
+```typescript
+// vite.config.ts
+import { vitePlugin as reactRouter } from "@react-router/dev/vite";
+import adapter from "@donswayo/pulumi-react-router-aws/adapter";
+import { defineConfig } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
+
+export default defineConfig({
+  plugins: [
+    reactRouter({
+      // Configure adapter
+      adapter: adapter({
+        // Output directory for build
+        out: ".react-router-aws",
+        
+        // Optional: Post-build hook
+        buildEnd: async (args) => {
+          console.log("Build completed:", args);
+        },
+      }),
+    }),
+    tsconfigPaths(),
+  ],
+});
+```
+
+### React Router Configuration
+
+```typescript
+// app/root.tsx
+import {
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+} from "react-router";
+
+export default function Root() {
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Meta />
+        <Links />
+      </head>
+      <body>
+        <Outlet />
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+```
+
+## Deployment Setup
+
+### Basic Deployment
+
+```typescript
+// infra/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import { ReactRouterAwsDeployment } from "@donswayo/pulumi-react-router-aws";
+
+const app = new ReactRouterAwsDeployment("my-react-router-app", {
+  // Path to adapter build output
+  buildPath: "./apps/web/.react-router-aws",
+  
+  // Environment variables
+  environment: {
+    NODE_ENV: "production",
+    API_URL: "https://api.example.com",
+    DATABASE_URL: process.env.DATABASE_URL!,
+  },
+});
+
+export const url = app.url;
+export const distributionId = app.distributionId;
+```
+
+### Advanced Configuration
+
+```typescript
+// infra/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import { ReactRouterAwsDeployment } from "@donswayo/pulumi-react-router-aws";
+
+const app = new ReactRouterAwsDeployment("production-app", {
+  buildPath: ".react-router-aws",
+  
+  // Lambda configuration
+  lambda: {
+    memory: 1536,              // 1.5GB RAM
+    timeout: 30,               // 30 seconds
+    architecture: "arm64",     // ARM for cost savings
+    environment: {
+      // Lambda-specific env vars
+      MAX_DB_CONNECTIONS: "10",
+    },
+  },
+  
+  // Custom domain
+  domain: {
+    name: "app.example.com",
+    certificateArn: "arn:aws:acm:us-east-1:123456789012:certificate/...",
+  },
+  
+  // CloudFront configuration
+  priceClass: "PriceClass_All",  // All edge locations
+  
+  // Resource tags
+  tags: {
+    Environment: "production",
+    Team: "frontend",
+    Framework: "react-router",
+  },
+});
+
+export const url = app.url;
+export const distributionId = app.distributionId;
+export const bucketName = app.bucketName;
+export const functionArn = app.functionArn;
+```
+
+## Building Your Application
+
+### Development Build
+
+```bash
+# Standard React Router build
+pnpm build
+
+# This runs the adapter and creates .react-router-aws/
+```
+
+### Production Build
+
+```bash
+# Clean previous builds
+rm -rf .react-router-aws build
+
+# Install production dependencies
+pnpm install --frozen-lockfile
+
+# Build with adapter
+pnpm build
+
+# Output will be in .react-router-aws/
+```
+
+### Build Output Structure
+
+```
+.react-router-aws/
+├── server/                   # Lambda function
+│   ├── handler.js           # Lambda entry point
+│   ├── index.js             # React Router server
+│   └── node_modules/        # Dependencies
+├── client/                   # Static assets
+│   ├── assets/              # JS/CSS bundles
+│   └── favicon.ico          # Public files
+└── metadata.json            # Deployment metadata
+```
+
+## Features Guide
+
+### Loaders (Data Fetching)
+
+Fetch data server-side before rendering:
+
+```typescript
+// app/routes/posts.$id.tsx
+import { useLoaderData } from "react-router";
+import type { Route } from "./+types/posts.$id";
+
+export async function loader({ params }: Route.LoaderArgs) {
+  // This runs on Lambda
+  const post = await db.post.findUnique({
+    where: { id: params.id },
+  });
+  
+  if (!post) {
+    throw new Response("Not Found", { status: 404 });
+  }
+  
+  return { post };
+}
+
+export default function Post() {
+  const { post } = useLoaderData<typeof loader>();
+  
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <div>{post.content}</div>
+    </article>
+  );
+}
+```
+
+### Actions (Data Mutations)
+
+Handle form submissions and mutations:
+
+```typescript
+// app/routes/posts.new.tsx
+import { Form, redirect } from "react-router";
+import type { Route } from "./+types/posts.new";
+
+export async function action({ request }: Route.ActionArgs) {
+  // This runs on Lambda
+  const formData = await request.formData();
+  const title = formData.get("title");
+  const content = formData.get("content");
+  
+  const post = await db.post.create({
+    data: { title, content },
+  });
+  
+  return redirect(`/posts/${post.id}`);
+}
+
+export default function NewPost() {
+  return (
+    <Form method="post">
+      <input name="title" placeholder="Title" required />
+      <textarea name="content" placeholder="Content" required />
+      <button type="submit">Create Post</button>
+    </Form>
+  );
+}
+```
+
+### Streaming SSR
+
+Stream responses for better performance:
+
+```typescript
+// app/routes/dashboard.tsx
+import { defer } from "react-router";
+import { Suspense } from "react";
+import type { Route } from "./+types/dashboard";
+
+export async function loader() {
+  // Critical data (await)
+  const user = await getUser();
+  
+  // Non-critical data (stream)
+  const analyticsPromise = getAnalytics();
+  const recentActivityPromise = getRecentActivity();
+  
+  return defer({
+    user,
+    analytics: analyticsPromise,
+    recentActivity: recentActivityPromise,
+  });
+}
+
+export default function Dashboard() {
+  const { user, analytics, recentActivity } = useLoaderData<typeof loader>();
+  
+  return (
+    <div>
+      <h1>Welcome, {user.name}</h1>
+      
+      <Suspense fallback={<div>Loading analytics...</div>}>
+        <Await resolve={analytics}>
+          {(data) => <Analytics data={data} />}
+        </Await>
+      </Suspense>
+      
+      <Suspense fallback={<div>Loading activity...</div>}>
+        <Await resolve={recentActivity}>
+          {(data) => <RecentActivity data={data} />}
+        </Await>
+      </Suspense>
+    </div>
+  );
+}
+```
+
+### Nested Routes
+
+Create complex layouts with nested routing:
+
+```typescript
+// app/routes.ts
+import { type RouteConfig } from "@react-router/dev/routes";
+
+export default [
+  route("dashboard", "routes/dashboard/layout.tsx", [
+    index("routes/dashboard/index.tsx"),
+    route("settings", "routes/dashboard/settings.tsx"),
+    route("profile", "routes/dashboard/profile.tsx"),
+  ]),
+] satisfies RouteConfig;
+
+// app/routes/dashboard/layout.tsx
+import { Outlet } from "react-router";
+
+export default function DashboardLayout() {
+  return (
+    <div className="dashboard">
+      <nav>
+        <Link to="/dashboard">Overview</Link>
+        <Link to="/dashboard/settings">Settings</Link>
+        <Link to="/dashboard/profile">Profile</Link>
+      </nav>
+      <main>
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+```
+
+### Error Boundaries
+
+Handle errors gracefully:
+
+```typescript
+// app/routes/posts.$id.tsx
+import { useRouteError, isRouteErrorResponse } from "react-router";
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  
+  if (isRouteErrorResponse(error)) {
+    return (
+      <div>
+        <h1>{error.status} {error.statusText}</h1>
+        <p>{error.data}</p>
+      </div>
+    );
+  }
+  
+  return (
+    <div>
+      <h1>Unexpected Error</h1>
+      <p>{error?.message || "Something went wrong"}</p>
+    </div>
+  );
+}
+```
+
+### Meta Tags & SEO
+
+Manage document head for SEO:
+
+```typescript
+// app/routes/posts.$id.tsx
+import type { Route } from "./+types/posts.$id";
+
+export const meta: Route.MetaFunction = ({ data }) => {
+  if (!data?.post) {
+    return [
+      { title: "Post Not Found" },
+      { name: "description", content: "The requested post could not be found" },
+    ];
+  }
+  
+  return [
+    { title: data.post.title },
+    { name: "description", content: data.post.excerpt },
+    { property: "og:title", content: data.post.title },
+    { property: "og:description", content: data.post.excerpt },
+    { property: "og:type", content: "article" },
+  ];
+};
+```
+
+### Progressive Enhancement
+
+Forms work without JavaScript:
+
+```typescript
+// app/routes/contact.tsx
+import { Form, useNavigation } from "react-router";
+
+export default function Contact() {
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === "submitting";
+  
+  return (
+    <Form method="post">
+      <input name="email" type="email" required />
+      <textarea name="message" required />
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? "Sending..." : "Send Message"}
+      </button>
+    </Form>
+  );
+}
+```
+
+## Performance Optimization
+
+### 1. Lambda Optimization
+
+```typescript
+lambda: {
+  // Use ARM64 for better price-performance
+  architecture: "arm64",
+  
+  // Appropriate memory allocation
+  memory: 1024,
+  
+  // Sufficient timeout for SSR
+  timeout: 20,
+}
+```
+
+### 2. Resource Hints
+
+```typescript
+// app/routes/posts.tsx
+export const links: Route.LinksFunction = () => [
+  // Preload critical resources
+  { rel: "preload", href: "/fonts/main.woff2", as: "font", type: "font/woff2" },
+  // Prefetch next likely navigation
+  { rel: "prefetch", href: "/posts/popular" },
+  // DNS prefetch for external domains
+  { rel: "dns-prefetch", href: "https://api.example.com" },
+];
+```
+
+### 3. Code Splitting
+
+```typescript
+// Lazy load heavy components
+import { lazy, Suspense } from "react";
+
+const HeavyChart = lazy(() => import("~/components/HeavyChart"));
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<div>Loading chart...</div>}>
+      <HeavyChart />
+    </Suspense>
+  );
+}
+```
+
+### 4. Caching Strategy
+
+```typescript
+// app/routes/api.data.tsx
+export async function loader() {
+  const data = await fetchData();
+  
+  return json(data, {
+    headers: {
+      "Cache-Control": "public, max-age=3600, s-maxage=86400",
+    },
+  });
+}
+```
+
+## Monitoring & Debugging
+
+### CloudWatch Logs
+
+```bash
+# View Lambda logs
+aws logs tail /aws/lambda/my-react-router-app --follow
+
+# Search for errors
+aws logs filter-log-events \
+  --log-group-name /aws/lambda/my-react-router-app \
+  --filter-pattern "ERROR"
+```
+
+### Custom Logging
+
+```typescript
+// app/utils/logger.ts
+export function log(level: string, message: string, data?: any) {
+  console.log(JSON.stringify({
+    level,
+    message,
+    data,
+    timestamp: new Date().toISOString(),
+  }));
+}
+
+// Usage in loader
+export async function loader({ request }: Route.LoaderArgs) {
+  log("info", "Loading data", { url: request.url });
+  
+  try {
+    const data = await fetchData();
+    return { data };
+  } catch (error) {
+    log("error", "Failed to load data", { error });
+    throw error;
+  }
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Hydration Mismatch
+
+**Problem**: Client/server HTML mismatch
+```
+Warning: Text content did not match
+```
+
+**Solution**: Ensure consistent rendering:
+```typescript
+// Avoid non-deterministic values during SSR
+const [mounted, setMounted] = useState(false);
+
+useEffect(() => {
+  setMounted(true);
+}, []);
+
+return mounted ? <ClientOnlyComponent /> : <Placeholder />;
+```
+
+#### 2. Environment Variables
+
+**Problem**: Env vars not available
+
+**Solution**: Use correct prefixes:
+```typescript
+// Server-side (any name)
+process.env.DATABASE_URL
+
+// Client-side (must use VITE_ prefix)
+import.meta.env.VITE_API_URL
+```
+
+#### 3. Large Bundle Size
+
+**Problem**: Slow initial load
+
+**Solution**: Optimize imports:
+```typescript
+// Instead of
+import { Button, Input, Modal } from "large-ui-library";
+
+// Use
+import Button from "large-ui-library/Button";
+import Input from "large-ui-library/Input";
+import Modal from "large-ui-library/Modal";
+```
+
+## Best Practices
+
+### 1. Database Connection Pooling
+
+```typescript
+// app/utils/db.server.ts
+import { PrismaClient } from "@prisma/client";
+
+let db: PrismaClient;
+
+declare global {
+  var __db: PrismaClient | undefined;
+}
+
+if (process.env.NODE_ENV === "production") {
+  db = new PrismaClient();
+} else {
+  if (!global.__db) {
+    global.__db = new PrismaClient();
+  }
+  db = global.__db;
+}
+
+export { db };
+```
+
+### 2. Type Safety
+
+```typescript
+// Use route types for type safety
+import type { Route } from "./+types/posts.$id";
+
+export async function loader({ params }: Route.LoaderArgs) {
+  // params.id is typed
+  const post = await getPost(params.id);
+  return { post };
+}
+
+export default function Post({ loaderData }: Route.ComponentProps) {
+  // loaderData is typed
+  return <div>{loaderData.post.title}</div>;
+}
+```
+
+### 3. Optimistic UI
+
+```typescript
+// app/routes/todos.tsx
+import { useFetcher } from "react-router";
+
+export default function Todos() {
+  const fetcher = useFetcher();
+  
+  return (
+    <fetcher.Form method="post">
+      <input name="title" />
+      <button type="submit">
+        Add Todo
+      </button>
+      {fetcher.state === "submitting" && (
+        <div className="optimistic-todo">
+          {fetcher.formData?.get("title")}
+        </div>
+      )}
+    </fetcher.Form>
+  );
+}
+```
+
+## Migration from Remix
+
+React Router v7 is the evolution of Remix, so migration is straightforward:
+
+### 1. Update Dependencies
+
+```json
+// package.json
+{
+  "dependencies": {
+    // Remove
+    // "@remix-run/node": "^2.0.0",
+    // "@remix-run/react": "^2.0.0",
+    
+    // Add
+    "react-router": "^7.0.0",
+    "@react-router/node": "^7.0.0"
+  }
+}
+```
+
+### 2. Update Imports
+
+```typescript
+// Before (Remix)
+import { json, redirect } from "@remix-run/node";
+import { Form, useLoaderData } from "@remix-run/react";
+
+// After (React Router v7)
+import { json, redirect } from "@react-router/node";
+import { Form, useLoaderData } from "react-router";
+```
+
+### 3. Update Configuration
+
+```typescript
+// vite.config.ts
+// Remove Remix plugin
+// import { unstable_vitePlugin as remix } from "@remix-run/dev";
+
+// Add React Router plugin
+import { vitePlugin as reactRouter } from "@react-router/dev/vite";
+```
+
+## Cost Optimization
+
+### Typical Costs (1M requests/month)
+
+| Component | Cost | Notes |
+|-----------|------|-------|
+| Lambda Compute | $6-12 | With ARM64 |
+| Lambda Requests | $2 | $0.20 per 1M |
+| CloudFront Transfer | $10-20 | Varies by region |
+| S3 Storage | $1-2 | Static assets |
+| **Total** | **$19-36/month** | |
+
+### Cost Reduction Tips
+
+1. **Use Streaming**: Reduce Lambda execution time
+2. **Enable Caching**: Reduce Lambda invocations
+3. **Optimize Bundles**: Reduce bandwidth
+4. **Use ARM64**: 20% cheaper than x86
+5. **Set Cache Headers**: Leverage CloudFront
+
+## Conclusion
+
+The React Router v7 deployment platform provides:
+- ✅ Full React Router/Remix feature support
+- ✅ Streaming SSR for better performance
+- ✅ Automatic scaling with Lambda
+- ✅ Global CDN with CloudFront
+- ✅ Cost-efficient serverless architecture
+
+Ready to deploy? Check out our [Quick Start Guide](/docs/quickstart) or explore [configuration options](/docs/configuration).

@@ -1,0 +1,137 @@
+---
+title: Framework Guides
+description: Detailed guides for deploying Next.js, SvelteKit, and React Router applications
+icon: LayersIcon
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+Learn how to deploy your favorite framework to AWS with our comprehensive guides.
+
+## Supported Frameworks
+
+We provide first-class support for the most popular modern web frameworks, each with optimized deployment configurations and full feature support.
+
+<Cards>
+  <Card 
+    title="Next.js" 
+    href="/docs/frameworks/nextjs"
+    description="Deploy Next.js 14+ with App Router, ISR, and streaming SSR"
+  />
+  <Card 
+    title="SvelteKit" 
+    href="/docs/frameworks/sveltekit"
+    description="Deploy SvelteKit 2+ with SSR, form actions, and hooks"
+  />
+  <Card 
+    title="React Router v7" 
+    href="/docs/frameworks/react-router"
+    description="Deploy React Router v7 (Remix) with loaders, actions, and streaming"
+  />
+</Cards>
+
+## Feature Comparison
+
+| Feature | Next.js | SvelteKit | React Router |
+|---------|---------|-----------|--------------|
+| **Server-Side Rendering** | ✅ Full support | ✅ Full support | ✅ Full support |
+| **Static Generation** | ✅ ISR & SSG | ✅ Prerendering | ✅ Static exports |
+| **API Routes** | ✅ App & Pages | ✅ +server.ts | ✅ Resource routes |
+| **Streaming** | ✅ React 19 | ✅ Partial | ✅ Deferred data |
+| **Image Optimization** | ✅ Built-in | 🔧 External | 🔧 External |
+| **Middleware** | ✅ Edge Runtime | ✅ Hooks | ✅ Loaders |
+| **Forms** | ✅ Server Actions | ✅ Form Actions | ✅ Actions |
+| **Build Time** | ~2-5 min | ~1-3 min | ~1-3 min |
+| **Cold Start** | ~800-1200ms | ~400-600ms | ~500-700ms |
+| **Bundle Size** | Medium | Small | Small |
+
+## Choosing a Framework
+
+### Choose Next.js if you need:
+- **Enterprise features** like ISR and on-demand revalidation
+- **Built-in image optimization** with automatic format conversion
+- **Large ecosystem** with extensive third-party integrations
+- **React Server Components** for improved performance
+- **Incremental adoption** with Pages and App Router
+
+### Choose SvelteKit if you want:
+- **Smaller bundle sizes** and faster runtime performance
+- **Simpler syntax** without JSX complexity
+- **Built-in animations** and transitions
+- **Compile-time optimizations** for better performance
+- **Progressive enhancement** first approach
+
+### Choose React Router if you prefer:
+- **Remix patterns** with loaders and actions
+- **Progressive enhancement** by default
+- **Nested routing** with powerful data loading
+- **Form handling** without JavaScript
+- **Streaming SSR** for optimal performance
+
+## Framework-Specific Features
+
+### Next.js Exclusive
+- Incremental Static Regeneration (ISR)
+- Image Optimization Lambda
+- Middleware at the edge
+- Partial Prerendering (PPR)
+- Server Actions
+
+### SvelteKit Exclusive
+- Form actions with progressive enhancement
+- Built-in store management
+- Compile-time optimizations
+- Native TypeScript support
+- Adapter ecosystem
+
+### React Router Exclusive
+- Nested route data loading
+- Built-in error boundaries
+- Resource routes
+- Optimistic UI patterns
+- Progressive enhancement focus
+
+## Migration Paths
+
+Moving from another framework? We've got you covered:
+
+- **From Create React App** → Best suited for React Router
+- **From Gatsby** → Natural fit for Next.js
+- **From Vue/Nuxt** → Consider SvelteKit for similar DX
+- **From Express/Fastify** → Any framework with API routes
+- **From Static Sites** → Start with SSG features in any framework
+
+## Best Practices
+
+### Universal Best Practices
+1. **Environment Variables**: Use framework-specific prefixes for client-side vars
+2. **Build Optimization**: Enable production optimizations
+3. **Caching Strategy**: Implement proper cache headers
+4. **Error Handling**: Use framework error boundaries
+5. **Performance Monitoring**: Track Core Web Vitals
+
+### Deployment Tips
+- Always test builds locally before deploying
+- Use appropriate Lambda memory settings (512MB-2048MB)
+- Enable ARM64 architecture for cost savings
+- Implement health checks for monitoring
+- Set up proper logging and alerts
+
+## Getting Help
+
+Need framework-specific assistance?
+
+- 📚 **Framework Docs**: [Next.js](https://nextjs.org/docs) | [SvelteKit](https://kit.svelte.dev/docs) | [React Router](https://reactrouter.com/docs)
+- 💬 **Community**: Join framework-specific Discord servers
+- 🎥 **Video Tutorials**: Check our YouTube channel
+- 📧 **Support**: Contact us for deployment help
+
+## What's Next?
+
+Ready to deploy your framework? Jump into the specific guide:
+
+1. Choose your framework guide above
+2. Follow the step-by-step instructions
+3. Configure for your specific needs
+4. Deploy to production
+5. Monitor and optimize
