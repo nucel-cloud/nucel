@@ -37,7 +37,7 @@ nucel deploy --preview
 
 ## Documentation
 
-Full docs at: https://nucel.dev (coming soon)
+Full docs at: https://nucel.cloud (coming soon)
 
 For now: [./apps/docs](./apps/docs)
 
