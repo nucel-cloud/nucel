@@ -1,0 +1,481 @@
+---
+title: Prerequisites
+description: Modern setup requirements for using Pulumi AWS Frameworks
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+Before deploying your applications with our Pulumi AWS packages, you'll need to set up your development environment with modern tooling.
+
+## System Requirements
+
+### Node.js Runtime
+
+Our packages support Node.js 18 LTS, 20 LTS, and 22 LTS (latest).
+
+<Callout type="info">
+We recommend using **Volta** for Node.js version management - it's faster, cross-platform, and automatically switches versions based on your project configuration.
+</Callout>
+
+<Steps>
+<Step>
+
+#### Install Volta
+
+<Tabs items={['macOS/Linux', 'Windows']}>
+<Tab value="macOS/Linux">
+
+```bash
+# Install Volta
+curl https://get.volta.sh | bash
+
+# Restart your terminal or run:
+source ~/.bashrc  # or ~/.zshrc
+```
+
+</Tab>
+<Tab value="Windows">
+
+```powershell
+# Enable Developer Mode first (required for Windows)
+# Settings → Update & Security → For Developers → Developer Mode
+
+# Download and run the Windows installer from:
+# https://github.com/volta-cli/volta/releases
+
+# Or use winget:
+winget install Volta.Volta
+```
+
+</Tab>
+</Tabs>
+
+</Step>
+
+<Step>
+
+#### Pin Node.js Version
+
+Navigate to your project and pin the Node.js version:
+
+```bash
+# Pin Node.js 22 (recommended)
+volta pin node@22
+
+# This adds to package.json:
+# "volta": {
+#   "node": "22.x.x"
+# }
+```
+
+</Step>
+</Steps>
+
+### Package Manager
+
+We use **pnpm** for efficient package management with built-in monorepo support.
+
+<Steps>
+<Step>
+
+#### Enable Corepack
+
+Corepack comes bundled with Node.js 16.9+ and manages package manager versions:
+
+```bash
+# Enable corepack (may require sudo on macOS/Linux)
+corepack enable
+
+# Prepare pnpm (latest stable)
+corepack prepare pnpm@latest --activate
+```
+
+</Step>
+
+<Step>
+
+#### Configure pnpm (Optional)
+
+```bash
+# Set pnpm to use content-addressable storage
+pnpm config set store-dir ~/.pnpm-store
+
+# Enable automatic installation of peer dependencies
+pnpm config set auto-install-peers true
+```
+
+</Step>
+</Steps>
+
+## Cloud Requirements
+
+### AWS Account Setup
+
+<Steps>
+<Step>
+
+#### Create AWS Account
+
+1. [Sign up for AWS](https://aws.amazon.com/) if you don't have an account
+2. Set up billing alerts to monitor costs
+3. Enable MFA on your root account for security
+
+</Step>
+
+<Step>
+
+#### Configure IAM User
+
+Create a dedicated IAM user for Pulumi deployments:
+
+```bash
+# Using AWS CLI (if you have root/admin access)
+aws iam create-user --user-name pulumi-deployer
+
+# Create access key
+aws iam create-access-key --user-name pulumi-deployer
+
+# Attach necessary policies (example - adjust based on your needs)
+aws iam attach-user-policy --user-name pulumi-deployer \
+  --policy-arn arn:aws:iam::aws:policy/PowerUserAccess
+```
+
+<Callout type="warning">
+For production, use more restrictive policies. See our [AWS Setup Guide](/docs/getting-started/aws-setup) for detailed IAM policies.
+</Callout>
+
+</Step>
+
+<Step>
+
+#### Install AWS CLI v2
+
+<Tabs items={['macOS', 'Linux', 'Windows']}>
+<Tab value="macOS">
+
+```bash
+# Using Homebrew (recommended)
+brew install awscli
+
+# Or download directly
+curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
+sudo installer -pkg AWSCLIV2.pkg -target /
+```
+
+</Tab>
+<Tab value="Linux">
+
+```bash
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# For ARM processors
+curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
+```
+
+</Tab>
+<Tab value="Windows">
+
+```powershell
+# Using winget
+winget install Amazon.AWSCLI
+
+# Or download the MSI installer from:
+# https://awscli.amazonaws.com/AWSCLIV2.msi
+```
+
+</Tab>
+</Tabs>
+
+</Step>
+
+<Step>
+
+#### Configure AWS Credentials
+
+```bash
+# Configure AWS CLI
+aws configure
+
+# You'll be prompted for:
+# - AWS Access Key ID
+# - AWS Secret Access Key
+# - Default region (e.g., us-east-1)
+# - Default output format (json recommended)
+```
+
+For enhanced security, consider using AWS SSO or temporary credentials:
+
+```bash
+# Configure SSO (recommended for organizations)
+aws configure sso
+
+# Or use environment variables
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+export AWS_DEFAULT_REGION="us-east-1"
+```
+
+</Step>
+</Steps>
+
+## Infrastructure as Code
+
+### Pulumi Setup
+
+<Steps>
+<Step>
+
+#### Install Pulumi CLI
+
+<Tabs items={['Script Install', 'Homebrew', 'Chocolatey', 'winget']}>
+<Tab value="Script Install">
+
+```bash
+# macOS and Linux
+curl -fsSL https://get.pulumi.com | sh
+
+# Add to PATH (if not done automatically)
+export PATH=$PATH:$HOME/.pulumi/bin
+```
+
+</Tab>
+<Tab value="Homebrew">
+
+```bash
+brew install pulumi
+```
+
+</Tab>
+<Tab value="Chocolatey">
+
+```powershell
+choco install pulumi
+```
+
+</Tab>
+<Tab value="winget">
+
+```powershell
+winget install Pulumi.Pulumi
+```
+
+</Tab>
+</Tabs>
+
+</Step>
+
+<Step>
+
+#### Configure Pulumi Backend
+
+<Tabs items={['Pulumi Cloud', 'Local', 'S3', 'Azure Blob']}>
+<Tab value="Pulumi Cloud">
+
+```bash
+# Sign up at https://app.pulumi.com/signup
+# Then login:
+pulumi login
+
+# Your state will be managed by Pulumi Cloud (free for individuals)
+```
+
+</Tab>
+<Tab value="Local">
+
+```bash
+# Use local filesystem (good for testing)
+pulumi login --local
+
+# State stored in ~/.pulumi by default
+```
+
+</Tab>
+<Tab value="S3">
+
+```bash
+# Use AWS S3 for state storage
+pulumi login s3://my-pulumi-state-bucket
+
+# Ensure bucket exists and has versioning enabled
+aws s3api create-bucket --bucket my-pulumi-state-bucket
+aws s3api put-bucket-versioning --bucket my-pulumi-state-bucket \
+  --versioning-configuration Status=Enabled
+```
+
+</Tab>
+<Tab value="Azure Blob">
+
+```bash
+# Use Azure Blob Storage
+pulumi login azblob://mycontainer?storage_account=myaccount
+```
+
+</Tab>
+</Tabs>
+
+</Step>
+</Steps>
+
+## Framework-Specific Requirements
+
+### Next.js Projects
+
+- **Next.js 14+** with App Router or Pages Router
+- **React 18+**
+- OpenNext-compatible structure
+- Supports ISR, SSR, SSG, and API Routes
+
+### SvelteKit Projects
+
+- **SvelteKit 2.0+**
+- **Vite 5+**
+- Adapter-compatible structure
+- Full support for SSR and CSR
+
+### React Router Projects
+
+- **React Router v7+**
+- **React 18+**
+- **Vite 5+**
+- Server-side rendering support
+
+## Development Tools
+
+### TypeScript (Strongly Recommended)
+
+```bash
+# Install TypeScript locally
+pnpm add -D typescript @types/node
+
+# Initialize TypeScript config
+npx tsc --init
+
+# Recommended tsconfig.json settings for Pulumi
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}
+```
+
+### Git Version Control
+
+```bash
+# Configure Git
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+
+# Recommended: Set up SSH keys for GitHub
+ssh-keygen -t ed25519 -C "your.email@example.com"
+```
+
+## Verification Script
+
+Create a verification script to ensure everything is properly installed:
+
+```typescript
+// verify-setup.ts
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { readFileSync } from 'fs';
+
+const execAsync = promisify(exec);
+
+interface ToolCheck {
+  name: string;
+  command: string;
+  minVersion?: string;
+  optional?: boolean;
+}
+
+async function verifySetup() {
+  const checks: ToolCheck[] = [
+    { name: 'Node.js', command: 'node --version', minVersion: '18' },
+    { name: 'pnpm', command: 'pnpm --version' },
+    { name: 'AWS CLI', command: 'aws --version' },
+    { name: 'Pulumi', command: 'pulumi version' },
+    { name: 'Volta', command: 'volta --version', optional: true },
+    { name: 'TypeScript', command: 'npx tsc --version', optional: true },
+  ];
+
+  console.log('🔍 Checking prerequisites...\n');
+
+  for (const check of checks) {
+    try {
+      const { stdout } = await execAsync(check.command);
+      const version = stdout.trim();
+      
+      if (check.minVersion) {
+        const currentMajor = parseInt(version.match(/\d+/)?.[0] || '0');
+        const requiredMajor = parseInt(check.minVersion);
+        
+        if (currentMajor >= requiredMajor) {
+          console.log(`✅ ${check.name}: ${version}`);
+        } else {
+          console.log(`⚠️  ${check.name}: ${version} (minimum v${check.minVersion} required)`);
+        }
+      } else {
+        console.log(`✅ ${check.name}: ${version}`);
+      }
+    } catch (error) {
+      if (check.optional) {
+        console.log(`ℹ️  ${check.name}: Not installed (optional)`);
+      } else {
+        console.error(`❌ ${check.name}: Not installed or not in PATH`);
+      }
+    }
+  }
+
+  // Check for package.json volta configuration
+  try {
+    const packageJson = JSON.parse(readFileSync('package.json', 'utf-8'));
+    if (packageJson.volta) {
+      console.log(`\n✅ Volta configuration found: Node ${packageJson.volta.node}`);
+    }
+  } catch {
+    // Package.json not found or no volta config
+  }
+
+  console.log('\n📚 Next Steps:');
+  console.log('1. Set up Pulumi: /docs/getting-started/pulumi-setup');
+  console.log('2. Configure AWS: /docs/getting-started/aws-setup');
+  console.log('3. Quick Start: /docs/getting-started/quick-start');
+}
+
+verifySetup().catch(console.error);
+```
+
+Run the verification:
+
+```bash
+npx tsx verify-setup.ts
+```
+
+## Troubleshooting
+
+<Callout type="info">
+**Common Issues:**
+
+- **Permission denied**: Use `sudo` for global installations on macOS/Linux
+- **Command not found**: Ensure tools are added to your PATH
+- **AWS credentials**: Check `~/.aws/credentials` file exists
+- **Pulumi login fails**: Ensure you have internet connectivity for Pulumi Cloud
+</Callout>
+
+## Next Steps
+
+Ready to proceed? Continue with:
+
+1. [Pulumi Setup](/docs/getting-started/pulumi-setup) - Initialize your Pulumi project
+2. [AWS Setup](/docs/getting-started/aws-setup) - Configure AWS permissions
+3. [Quick Start](/docs/getting-started/quick-start) - Deploy your first app

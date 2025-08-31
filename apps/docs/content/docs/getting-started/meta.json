@@ -1,0 +1,9 @@
+{
+  "title": "Getting Started",
+  "pages": [
+    "prerequisites",
+    "pulumi-setup",
+    "aws-setup",
+    "quick-start"
+  ]
+}

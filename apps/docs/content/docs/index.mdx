@@ -1,13 +1,59 @@
 ---
-title: Hello World
-description: Your first document
+title: Getting Started
+description: Deploy modern web frameworks to AWS with Pulumi
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+## Welcome to Pulumi AWS Frameworks
 
-## What is Next?
+This documentation covers a collection of Pulumi components designed to simplify deploying modern web applications to AWS. Our packages support:
+
+- **Next.js** - Full-stack React framework with OpenNext
+- **SvelteKit** - Fast and modern Svelte framework  
+- **React Router v7** - The latest React Router with server-side rendering
+
+## Why Use These Packages?
+
+### 🚀 Production-Ready Infrastructure
+Each package provides battle-tested AWS infrastructure patterns optimized for their respective frameworks.
+
+### ⚡ Zero-Config Deployment
+Get started with sensible defaults, then customize as needed.
+
+### 🔧 Framework-Specific Optimizations
+Each package is tailored to leverage the unique features of its framework.
+
+### 💰 Cost-Effective
+Serverless architecture means you only pay for what you use.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+1. **Node.js 18+** installed
+2. **Pulumi CLI** installed and configured
+3. **AWS Account** with appropriate permissions
+4. **AWS CLI** configured with credentials
+
+## Quick Start
+
+Choose your framework to get started:
 
 <Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.vercel.app" />
+  <Card title="Next.js" href="/docs/packages/nextjs" description="Deploy Next.js apps with OpenNext to AWS" />
+  <Card title="SvelteKit" href="/docs/packages/sveltekit" description="Deploy SvelteKit applications to AWS Lambda" />
+  <Card title="React Router" href="/docs/packages/react-router" description="Deploy React Router v7 apps to AWS" />
 </Cards>
+
+## Core Concepts
+
+All packages share common patterns:
+
+- **Serverless Architecture** - Lambda functions for SSR
+- **CDN Distribution** - CloudFront for global content delivery
+- **Static Asset Hosting** - S3 for efficient static file serving
+- **Infrastructure as Code** - Version-controlled, reproducible deployments
+
+## Support
+
+- [GitHub Issues](https://github.com/DonsWayo/pulu-front/issues)
+- [Examples Repository](https://github.com/DonsWayo/pulu-front/tree/main/apps)
