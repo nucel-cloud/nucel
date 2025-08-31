@@ -1,0 +1,640 @@
+---
+title: Troubleshooting & FAQ
+description: Common issues, solutions, and frequently asked questions
+---
+
+# Troubleshooting & FAQ
+
+## Common Issues
+
+### Build & Deployment Issues
+
+#### Module Not Found in Lambda
+
+**Error:**
+```
+Cannot find module 'xyz'
+Error: Cannot find module '/var/task/node_modules/xyz/index.js'
+```
+
+**Causes:**
+- Symlinked dependencies not resolved
+- Missing production dependencies
+- Incorrect package hoisting
+
+**Solutions:**
+
+1. Configure pnpm for proper hoisting:
+```
+# .npmrc
+node-linker=hoisted
+shamefully-hoist=true
+hoist=true
+```
+
+2. Ensure dependencies are in `dependencies`, not `devDependencies`:
+```json
+{
+  "dependencies": {
+    "needed-in-production": "^1.0.0"
+  }
+}
+```
+
+3. Clear and rebuild:
+```bash
+rm -rf node_modules .next .open-next
+pnpm install
+pnpm build
+```
+
+#### Deployment Package Too Large
+
+**Error:**
+```
+Unzipped size must be smaller than 262144000 bytes
+```
+
+**Solutions:**
+
+1. Exclude unnecessary files:
+```typescript
+// next.config.ts
+export default {
+  experimental: {
+    outputFileTracingExcludes: {
+      "*": [
+        "node_modules/@swc/core-linux-x64-gnu",
+        "node_modules/@swc/core-linux-x64-musl",
+        "node_modules/@esbuild",
+        "**/*.map",
+        "**/*.d.ts",
+      ],
+    },
+  },
+};
+```
+
+2. Use Lambda Layers for large dependencies
+3. Optimize images and assets
+4. Review and remove unused dependencies
+
+#### Build Timeout
+
+**Error:**
+```
+Build process exceeded timeout
+```
+
+**Solutions:**
+
+1. Increase build timeout:
+```bash
+# For CI/CD
+timeout: 30m
+```
+
+2. Optimize build process:
+```typescript
+// Parallel builds
+export default {
+  experimental: {
+    cpus: 4,
+  },
+};
+```
+
+3. Use build caching
+4. Pre-build heavy dependencies
+
+### Runtime Issues
+
+#### Lambda Cold Starts
+
+**Symptoms:**
+- First request takes 2-5 seconds
+- Subsequent requests are fast
+- Issue returns after inactivity
+
+**Solutions:**
+
+1. Enable provisioned concurrency:
+```typescript
+lambda: {
+  server: {
+    provisionedConcurrency: 5,
+  },
+}
+```
+
+2. Use warmer function:
+```typescript
+lambda: {
+  warmer: {
+    enabled: true,
+    concurrency: 10,
+    schedule: "rate(5 minutes)",
+  },
+}
+```
+
+3. Optimize bundle size
+4. Use ARM64 architecture for faster starts
+
+#### Memory Errors
+
+**Error:**
+```
+Runtime exited with error: signal: killed
+FATAL ERROR: Reached heap limit Allocation failed
+```
+
+**Solutions:**
+
+1. Increase Lambda memory:
+```typescript
+lambda: {
+  server: {
+    memory: 2048, // Increase from default 512
+  },
+}
+```
+
+2. Optimize memory usage:
+```typescript
+// Implement connection pooling
+const pool = new Pool({
+  max: 5, // Limit connections
+});
+```
+
+3. Stream large responses
+4. Implement pagination
+
+#### Timeout Errors
+
+**Error:**
+```
+Task timed out after 10.00 seconds
+```
+
+**Solutions:**
+
+1. Increase timeout:
+```typescript
+lambda: {
+  server: {
+    timeout: 30, // Increase from default 10
+  },
+}
+```
+
+2. Optimize slow operations:
+- Add database indexes
+- Implement caching
+- Use background jobs for heavy tasks
+
+### CloudFront Issues
+
+#### 403 Forbidden Errors
+
+**Error:**
+```
+403 ERROR
+The request could not be satisfied.
+```
+
+**Causes:**
+- S3 bucket policy misconfiguration
+- OAI not properly set up
+- Path pattern mismatch
+
+**Solutions:**
+
+1. Check S3 bucket policy includes OAI
+2. Verify CloudFront origin configuration
+3. Check cache behaviors and path patterns
+4. Clear CloudFront cache:
+```bash
+aws cloudfront create-invalidation \
+  --distribution-id E1234567890 \
+  --paths "/*"
+```
+
+#### Cache Not Working
+
+**Symptoms:**
+- Every request hits Lambda
+- High Lambda costs
+- Slow repeated requests
+
+**Solutions:**
+
+1. Set proper cache headers:
+```typescript
+// API route
+export async function GET() {
+  return Response.json(data, {
+    headers: {
+      "Cache-Control": "public, max-age=3600",
+    },
+  });
+}
+```
+
+2. Configure cache behaviors:
+```typescript
+cacheBehaviors: [
+  {
+    pathPattern: "/api/*",
+    cachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6",
+  },
+]
+```
+
+### Database Connection Issues
+
+#### Connection Pool Exhausted
+
+**Error:**
+```
+Error: Connection pool exhausted
+too many connections for role
+```
+
+**Solutions:**
+
+1. Implement connection pooling:
+```typescript
+// Singleton pattern for Lambda
+let pool: Pool;
+
+export function getPool() {
+  if (!pool) {
+    pool = new Pool({
+      max: 5, // Limit for Lambda
+      idleTimeoutMillis: 30000,
+    });
+  }
+  return pool;
+}
+```
+
+2. Use RDS Proxy for connection management
+3. Close connections properly
+4. Set connection limits per Lambda
+
+### Environment Variable Issues
+
+#### Variables Not Available
+
+**Problem:**
+Environment variables undefined in Lambda
+
+**Solutions:**
+
+1. Check variable names and casing
+2. Verify deployment configuration:
+```typescript
+environment: {
+  MY_VAR: process.env.MY_VAR || "default",
+}
+```
+
+3. For client-side variables, use correct prefix:
+- Next.js: `NEXT_PUBLIC_*`
+- SvelteKit: `PUBLIC_*`
+- React Router: `VITE_*`
+
+## Frequently Asked Questions
+
+### General
+
+**Q: How much does it cost to run an application?**
+
+A: Typical costs for moderate traffic (1M requests/month):
+- Lambda: $5-15
+- CloudFront: $10-20
+- S3: $1-5
+- Total: $20-40/month
+
+**Q: Can I use custom domains?**
+
+A: Yes, configure in your deployment:
+```typescript
+domain: {
+  name: "app.example.com",
+  certificateArn: "arn:aws:acm:us-east-1:...",
+}
+```
+
+**Q: Is it production-ready?**
+
+A: Yes, the platform is designed for production:
+- Auto-scaling
+- Global CDN
+- Monitoring & logging
+- Security best practices
+
+### Deployment
+
+**Q: How do I deploy to multiple regions?**
+
+A: Configure multi-region deployment:
+```typescript
+const regions = ["us-east-1", "eu-west-1"];
+regions.forEach(region => {
+  new Next(`app-${region}`, config, { 
+    provider: new aws.Provider(region, { region })
+  });
+});
+```
+
+**Q: Can I use CI/CD?**
+
+A: Yes, see our [CI/CD integration guide](/docs/deployment#cicd):
+- GitHub Actions examples
+- GitLab CI examples
+- Jenkins pipelines
+
+**Q: How do I rollback a deployment?**
+
+A: Use Pulumi's built-in rollback:
+```bash
+# View history
+pulumi stack history
+
+# Rollback to previous
+pulumi stack export | pulumi stack import
+
+# Or restore specific version
+pulumi stack restore --version 5
+```
+
+### Performance
+
+**Q: How do I reduce cold starts?**
+
+A: Multiple strategies:
+1. Provisioned concurrency
+2. Warmer functions
+3. Smaller bundles
+4. ARM64 architecture
+
+**Q: Why is my app slow?**
+
+A: Common causes:
+1. Cold starts - use warming
+2. Large bundles - optimize size
+3. No caching - add cache headers
+4. Insufficient memory - increase Lambda RAM
+
+**Q: How do I optimize costs?**
+
+A: Cost optimization tips:
+1. Use ARM64 (20% cheaper)
+2. Enable caching
+3. Optimize images
+4. Set appropriate timeouts
+5. Use CloudFront price classes
+
+### Security
+
+**Q: How do I secure my application?**
+
+A: Security features included:
+- IAM roles with least privilege
+- Environment variable encryption
+- HTTPS only
+- Security headers
+- AWS WAF compatible
+
+**Q: Can I use VPC?**
+
+A: Yes, configure Lambda VPC:
+```typescript
+lambda: {
+  vpc: {
+    subnetIds: ["subnet-xxx"],
+    securityGroupIds: ["sg-xxx"],
+  },
+}
+```
+
+**Q: How do I handle secrets?**
+
+A: Use AWS Secrets Manager:
+```typescript
+import { SecretsManager } from "aws-sdk";
+
+const client = new SecretsManager();
+const secret = await client.getSecretValue({ 
+  SecretId: "my-secret" 
+}).promise();
+```
+
+### Framework-Specific
+
+**Q: Does Next.js ISR work?**
+
+A: Yes, with DynamoDB and SQS:
+- Automatic cache invalidation
+- On-demand revalidation
+- Tag-based invalidation
+
+**Q: Can I use SvelteKit form actions?**
+
+A: Yes, fully supported:
+```svelte
+<form method="POST" action="?/create">
+  <!-- Form fields -->
+</form>
+```
+
+**Q: Does React Router streaming work?**
+
+A: Yes, streaming SSR is supported:
+```typescript
+export async function loader() {
+  return defer({
+    critical: await getCriticalData(),
+    lazy: getLazyData(), // Streams
+  });
+}
+```
+
+### Migration
+
+**Q: How do I migrate from Vercel?**
+
+A: See our [migration guide](/docs/migration):
+1. Export environment variables
+2. Update configuration
+3. Deploy with our platform
+
+**Q: Can I gradually migrate?**
+
+A: Yes, strategies:
+1. Route specific paths to new deployment
+2. Use CloudFront for traffic splitting
+3. Maintain both until ready
+
+**Q: What about databases?**
+
+A: Database options:
+- RDS with VPC peering
+- Serverless Aurora
+- DynamoDB
+- External services (Supabase, PlanetScale)
+
+## Debug Techniques
+
+### Enable Verbose Logging
+
+```typescript
+// In your code
+console.log(JSON.stringify({
+  event,
+  context,
+  environment: process.env,
+}, null, 2));
+```
+
+### CloudWatch Insights Queries
+
+```sql
+-- Find errors
+fields @timestamp, @message
+| filter @message like /ERROR/
+| sort @timestamp desc
+| limit 100
+
+-- Performance analysis
+fields @timestamp, @duration
+| filter @type = "REPORT"
+| stats avg(@duration), max(@duration), min(@duration)
+```
+
+### Local Testing
+
+```bash
+# Test Lambda locally
+sam local start-api
+
+# Test with Docker
+docker run -p 9000:8080 \
+  -e AWS_LAMBDA_FUNCTION_MEMORY_SIZE=1024 \
+  my-lambda-image:latest
+```
+
+### Performance Profiling
+
+```typescript
+// Add timing
+const start = performance.now();
+await operation();
+console.log(`Operation took ${performance.now() - start}ms`);
+
+// Memory usage
+console.log(process.memoryUsage());
+```
+
+## Getting Help
+
+### Resources
+
+- **Documentation**: [Full docs](/docs)
+- **GitHub Issues**: [Report bugs](https://github.com/donswayo/pulu-front/issues)
+- **Examples**: [Sample apps](https://github.com/donswayo/pulu-front/tree/main/apps)
+
+### Support Channels
+
+1. **GitHub Discussions**: Community support
+2. **Stack Overflow**: Tag with `pulumi-aws`
+3. **Discord**: Join our community
+
+### Reporting Issues
+
+When reporting issues, include:
+
+1. **Environment details:**
+```bash
+node --version
+pnpm --version
+nucel --version
+```
+
+2. **Configuration:**
+```typescript
+// Relevant config sections
+```
+
+3. **Error messages:**
+```
+Full error output
+Stack traces
+CloudWatch logs
+```
+
+4. **Steps to reproduce**
+
+5. **Expected vs actual behavior**
+
+## Common Patterns
+
+### Health Checks
+
+```typescript
+// app/api/health/route.ts
+export async function GET() {
+  try {
+    // Check dependencies
+    await db.ping();
+    
+    return Response.json({ 
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    return Response.json({ 
+      status: "unhealthy",
+      error: error.message,
+    }, { status: 503 });
+  }
+}
+```
+
+### Graceful Degradation
+
+```typescript
+// Fallback for service failures
+export async function getData() {
+  try {
+    return await fetchFromAPI();
+  } catch (error) {
+    console.error("API failed, using cache", error);
+    return getCachedData();
+  }
+}
+```
+
+### Rate Limiting
+
+```typescript
+import { Ratelimit } from "@upstash/ratelimit";
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, "10 s"),
+});
+
+export async function middleware(request: Request) {
+  const { success } = await ratelimit.limit(
+    request.headers.get("x-forwarded-for") || "anonymous"
+  );
+  
+  if (!success) {
+    return new Response("Too Many Requests", { status: 429 });
+  }
+}
+```
