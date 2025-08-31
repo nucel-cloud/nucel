@@ -1,0 +1,251 @@
+---
+title: Deployment
+description: Deploy and manage your applications in production with Nucel
+icon: CloudIcon
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Everything you need to know about deploying and managing applications in production with Nucel.
+
+## Deployment Overview
+
+Nucel provides enterprise-grade deployment capabilities with automatic scaling, global distribution, and comprehensive monitoring. Deploy with confidence using battle-tested AWS infrastructure.
+
+<Cards>
+  <Card 
+    title="AWS Setup" 
+    href="/docs/deployment/aws-setup"
+    description="Configure AWS credentials and permissions"
+  />
+  <Card 
+    title="Production Deployment" 
+    href="/docs/deployment/production"
+    description="Best practices for production deployments"
+  />
+  <Card 
+    title="CI/CD Integration" 
+    href="/docs/deployment/ci-cd"
+    description="Automate deployments with GitHub Actions and GitLab"
+  />
+  <Card 
+    title="Monitoring" 
+    href="/docs/deployment/monitoring"
+    description="Track performance and debug issues"
+  />
+</Cards>
+
+## Deployment Workflow
+
+<Callout type="info">
+  Our deployment process is designed to be simple yet powerful, giving you full control while abstracting complexity.
+</Callout>
+
+### 1. **Build Phase**
+Your application is built using framework-specific adapters that optimize for serverless deployment:
+- Tree-shaking and minification
+- Static asset optimization
+- Lambda function bundling
+- Dependency resolution
+
+### 2. **Infrastructure Phase**
+Pulumi provisions AWS resources automatically:
+- Lambda functions for SSR
+- S3 buckets for static assets
+- CloudFront distribution for CDN
+- DynamoDB tables for caching (Next.js)
+- IAM roles and policies
+
+### 3. **Deployment Phase**
+Your application is deployed globally:
+- Upload static assets to S3
+- Deploy Lambda functions
+- Configure CloudFront behaviors
+- Set up custom domains
+- Enable monitoring
+
+## Key Features
+
+### 🚀 **Zero-Downtime Deployments**
+- Blue-green deployment strategy
+- Automatic rollback on failures
+- Health checks before switching
+- CloudFront cache invalidation
+
+### 🌍 **Global Distribution**
+- 450+ CloudFront edge locations
+- Automatic geo-routing
+- Regional failover support
+- Optimized for all continents
+
+### 📊 **Comprehensive Monitoring**
+- Real-time CloudWatch metrics
+- Custom dashboards
+- Error tracking and alerts
+- Performance analytics
+
+### 🔒 **Enterprise Security**
+- AWS WAF integration
+- DDoS protection with Shield
+- SSL/TLS encryption
+- IAM role-based access
+
+## Deployment Strategies
+
+### Development Deployment
+Quick iterations with instant feedback:
+```bash
+nucel deploy --stack dev
+```
+- Fast deployments
+- Verbose logging
+- Debug information
+- Cost-optimized settings
+
+### Staging Deployment
+Production-like environment for testing:
+```bash
+nucel deploy --stack staging
+```
+- Production configuration
+- Performance testing
+- Integration testing
+- Security validation
+
+### Production Deployment
+Optimized for reliability and performance:
+```bash
+nucel deploy --stack production --preview
+nucel deploy --stack production
+```
+- High availability
+- Auto-scaling
+- Performance optimization
+- Comprehensive monitoring
+
+## Environment Management
+
+### Stack-Based Deployments
+Manage multiple environments independently:
+
+| Stack | Purpose | Configuration |
+|-------|---------|--------------|
+| **dev** | Development | Minimal resources, debug enabled |
+| **staging** | Testing | Production-like, lower capacity |
+| **production** | Live traffic | Full capacity, monitoring enabled |
+| **preview** | PR previews | Temporary, auto-cleanup |
+
+### Environment Variables
+Secure configuration management:
+- `.env.development` - Local development
+- `.env.staging` - Staging environment
+- `.env.production` - Production secrets
+- Pulumi secrets for sensitive data
+
+## Cost Management
+
+### Typical Costs by Traffic
+
+| Monthly Traffic | Estimated Cost | Configuration |
+|----------------|----------------|---------------|
+| < 100K requests | $10-20 | Basic setup |
+| 100K-1M requests | $20-50 | Standard setup |
+| 1M-10M requests | $50-200 | Optimized setup |
+| 10M+ requests | $200+ | Enterprise setup |
+
+### Cost Optimization Tips
+1. Use ARM64 Lambda architecture (20% cheaper)
+2. Enable CloudFront caching
+3. Optimize image delivery
+4. Set appropriate Lambda memory
+5. Use S3 lifecycle policies
+
+## Deployment Checklist
+
+Before deploying to production:
+
+- [ ] Environment variables configured
+- [ ] Database migrations completed
+- [ ] SSL certificates validated
+- [ ] Health checks implemented
+- [ ] Error handling tested
+- [ ] Monitoring configured
+- [ ] Backup strategy defined
+- [ ] Rollback plan ready
+- [ ] Performance benchmarked
+- [ ] Security scan passed
+
+## Advanced Topics
+
+### Multi-Region Deployment
+Deploy globally for maximum availability:
+```typescript
+const regions = ['us-east-1', 'eu-west-1', 'ap-southeast-1'];
+```
+
+### Blue-Green Deployment
+Zero-downtime updates with instant rollback:
+```typescript
+{
+  strategy: 'blue-green',
+  healthCheck: '/api/health',
+  rollbackOnFailure: true
+}
+```
+
+### Canary Releases
+Gradual rollout to minimize risk:
+```typescript
+{
+  canary: {
+    percentage: 10,
+    duration: '30m',
+    metrics: ['error-rate', 'latency']
+  }
+}
+```
+
+## Troubleshooting Deployments
+
+Common deployment issues and solutions:
+
+### Build Failures
+- Check Node.js version compatibility
+- Verify all dependencies are installed
+- Review build logs for errors
+
+### Permission Errors
+- Ensure AWS credentials are configured
+- Check IAM role permissions
+- Verify Pulumi access
+
+### Runtime Errors
+- Check CloudWatch logs
+- Verify environment variables
+- Test Lambda function locally
+
+## What's Next?
+
+<Cards>
+  <Card 
+    title="Configure AWS" 
+    href="/docs/deployment/aws-setup"
+    description="Set up your AWS account"
+  />
+  <Card 
+    title="Deploy to Production" 
+    href="/docs/deployment/production"
+    description="Launch your application"
+  />
+  <Card 
+    title="Set Up Monitoring" 
+    href="/docs/deployment/monitoring"
+    description="Track your application"
+  />
+  <Card 
+    title="Automate with CI/CD" 
+    href="/docs/deployment/ci-cd"
+    description="Continuous deployment"
+  />
+</Cards>
