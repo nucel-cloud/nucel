@@ -5,8 +5,8 @@ import { baseOptions } from '@/lib/layout.shared';
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: 'Pulumi AWS Framework Documentation' },
-    { name: 'description', content: 'Deploy Next.js, SvelteKit, and React Router apps to AWS with Pulumi' },
+    { title: 'Nucel - Open Source Deployment Platform' },
+    { name: 'description', content: 'Deploy Next.js, SvelteKit, and React Router apps to AWS without infrastructure complexity' },
   ];
 }
 
@@ -16,21 +16,21 @@ export default function Home() {
       <div className="flex flex-col items-center justify-center text-center flex-1 px-4 py-12">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Pulumi AWS Frameworks
+            Nucel
           </h1>
           <p className="text-xl text-fd-muted-foreground mb-8">
-            Deploy your Next.js, SvelteKit, and React Router applications to AWS with ease using our pre-built Pulumi components.
+            Open-source deployment platform for modern web applications. Deploy to AWS with zero configuration.
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-12">
             <div className="p-6 border rounded-lg hover:shadow-lg transition-shadow">
               <h3 className="text-lg font-semibold mb-2">Next.js</h3>
               <p className="text-sm text-fd-muted-foreground mb-4">
-                Deploy Next.js apps with OpenNext to AWS Lambda, CloudFront, and S3
+                Full support for App Router, ISR, and streaming SSR
               </p>
               <Link
                 className="text-sm text-blue-600 hover:underline"
-                to="/docs/packages/nextjs"
+                to="/docs/frameworks/nextjs"
               >
                 Learn more →
               </Link>
@@ -39,11 +39,11 @@ export default function Home() {
             <div className="p-6 border rounded-lg hover:shadow-lg transition-shadow">
               <h3 className="text-lg font-semibold mb-2">SvelteKit</h3>
               <p className="text-sm text-fd-muted-foreground mb-4">
-                Deploy SvelteKit applications to AWS Lambda with CloudFront CDN
+                SSR, form actions, and full SvelteKit feature support
               </p>
               <Link
                 className="text-sm text-blue-600 hover:underline"
-                to="/docs/packages/sveltekit"
+                to="/docs/frameworks/sveltekit"
               >
                 Learn more →
               </Link>
@@ -52,11 +52,11 @@ export default function Home() {
             <div className="p-6 border rounded-lg hover:shadow-lg transition-shadow">
               <h3 className="text-lg font-semibold mb-2">React Router</h3>
               <p className="text-sm text-fd-muted-foreground mb-4">
-                Deploy React Router v7 apps to AWS Lambda, CloudFront, and S3
+                Loaders, actions, and streaming SSR support
               </p>
               <Link
                 className="text-sm text-blue-600 hover:underline"
-                to="/docs/packages/react-router"
+                to="/docs/frameworks/react-router"
               >
                 Learn more →
               </Link>
