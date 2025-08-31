@@ -58,7 +58,7 @@
     <div class="container mx-auto px-4 py-6">
       <div class="flex items-center justify-between">
         <p class="text-sm text-gray-600">
-          © 2024 Pulu Web. Built with SvelteKit.
+          © 2025 Pulu Web. Built with SvelteKit.
         </p>
         <div class="flex items-center gap-4">
           <a href="/api/health" class="text-sm text-gray-600 hover:text-gray-900">

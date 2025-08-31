@@ -11,7 +11,7 @@ const posts = {
   "nextjs-15-features": {
     title: "What's New in Next.js 15",
     author: "Sarah Chen",
-    date: "2024-01-13",
+    date: "2025-01-13",
     readTime: "5 min read",
     content: `
 # What's New in Next.js 15
@@ -46,7 +46,7 @@ Next.js 15 represents a significant step forward in web development, offering be
   "server-components-guide": {
     title: "Complete Guide to React Server Components",
     author: "Mike Johnson",
-    date: "2024-01-12",
+    date: "2025-01-12",
     readTime: "8 min read",
     content: `
 # Complete Guide to React Server Components
@@ -92,7 +92,7 @@ async function ProductList() {
   "edge-runtime-explained": {
     title: "Understanding the Edge Runtime",
     author: "Emma Wilson",
-    date: "2024-01-11",
+    date: "2025-01-11",
     readTime: "6 min read",
     content: `
 # Understanding the Edge Runtime
@@ -133,12 +133,12 @@ Edge Runtime is perfect for applications that need global low latency and can be
     tags: ["Edge Computing", "Performance", "Infrastructure"],
   },
   "typescript-best-practices": {
-    title: "TypeScript Best Practices in 2024",
+    title: "TypeScript Best Practices in 2025",
     author: "David Kim",
-    date: "2024-01-10",
+    date: "2025-01-10",
     readTime: "7 min read",
     content: `
-# TypeScript Best Practices in 2024
+# TypeScript Best Practices in 2025
 
 Modern TypeScript patterns and practices for building type-safe applications.
 

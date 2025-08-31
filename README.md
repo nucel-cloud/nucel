@@ -30,6 +30,18 @@ This monorepo includes multiple Next.js applications with shared components and 
 - **Port**: 3000 (development)
 - **Features**: MDX support, documentation UI components, search functionality
 
+#### `apps/svelte`
+- **Description**: SvelteKit application with feature parity
+- **Stack**: SvelteKit 2, Svelte 5, Tailwind CSS v4
+- **Port**: 5173 (development)
+- **Features**: Server-side rendering, API routes, streaming, products catalog, dashboard
+
+#### `apps/react-router`
+- **Description**: React Router v7 application with feature parity
+- **Stack**: React Router 7, React 19, Tailwind CSS v4
+- **Port**: 5174 (development)
+- **Features**: Server-side rendering, API routes, streaming, file-based routing, nested routes
+
 ### Packages
 
 #### `@donswayo/pulumi-nextjs-aws` (v1.1.0)
@@ -74,12 +86,52 @@ This monorepo includes multiple Next.js applications with shared components and 
   - SQS queue for revalidation events
 - **IAM Roles**: Least-privilege access policies
 
+#### `@donswayo/pulumi-sveltekit-aws`
+**Reusable Pulumi Components**: Deploy SvelteKit apps to AWS Lambda, CloudFront, and S3
+
+**Features**:
+- SvelteKit adapter for AWS deployment
+- AWS Lambda for SSR and API routes
+- CloudFront distribution with intelligent caching
+- S3 for static assets and prerendered pages
+- Custom domain support with ACM certificates
+- TypeScript support
+- Infrastructure as Code with Pulumi
+
+**AWS Resources Created**:
+- Lambda Function for SSR (configurable memory/timeout)
+- S3 Bucket for static assets
+- CloudFront Distribution with optimized cache behaviors
+- IAM Roles with least-privilege policies
+
+#### `@donswayo/pulumi-react-router-aws`
+**Reusable Pulumi Components**: Deploy React Router v7 apps to AWS Lambda, CloudFront, and S3
+
+**Features**:
+- React Router v7 adapter with buildEnd hook integration
+- AWS Lambda with Function URLs for SSR and API routes
+- CloudFront distribution with HTTP/2 and HTTP/3 support
+- S3 for static assets with intelligent caching
+- Streaming response support
+- File-based routing with `@react-router/fs-routes`
+- Custom domain support with ACM certificates
+- TypeScript support
+- Infrastructure as Code with Pulumi
+
+**AWS Resources Created**:
+- Lambda Function with Function URL (configurable memory/timeout/architecture)
+- S3 Bucket with Origin Access Identity (OAI)
+- CloudFront Distribution with optimized cache behaviors
+- IAM Roles with least-privilege policies
+
 #### `@repo/infra`
 **Infrastructure Deployment**: Pulumi deployment configurations for all applications
 
 **Deployment Stacks**:
 - `docs`: Documentation site infrastructure
 - `web`: Main application infrastructure
+- `svelte`: SvelteKit application infrastructure
+- `react-router`: React Router application infrastructure
 
 **Configuration**:
 - Environment-based settings (development/production)
@@ -680,7 +732,7 @@ const budget = new aws.budgets.Budget("app-budget", {
   budgetType: "COST",
   limitAmount: "1000",
   limitUnit: "USD",
-  timePeriodStart: "2024-01-01",
+  timePeriodStart: "2025-01-01",
   timeUnit: "MONTHLY",
   costFilters: [{
     name: "TagKeyValue",
