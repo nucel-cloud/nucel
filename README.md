@@ -242,7 +242,7 @@ See the packages in action with these deployed examples:
 
 - **SvelteKit App**: https://dro8senf0dw6x.cloudfront.net
 - **React Router v7 App**: https://d3mugpqvts0fge.cloudfront.net  
-- **Next.js App**: https://d1yttsrbybjmq1.cloudfront.net
+- **Next.js App**: https://d3djdoi9vcnwxq.cloudfront.net
 
 ## Documentation
 
