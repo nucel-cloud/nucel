@@ -1,5 +1,5 @@
 {
-  "name": "pulumi-aws",
+  "name": "nucel",
   "private": true,
   "scripts": {
     "build": "turbo run build",
