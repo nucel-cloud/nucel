@@ -1,0 +1,816 @@
+---
+title: Next.js Deployment Guide
+description: Complete guide for deploying Next.js applications to AWS
+---
+
+# Next.js Deployment Guide
+
+Deploy Next.js 14+ applications with full support for App Router, Pages Router, ISR, and all Next.js features.
+
+## Overview
+
+Our Next.js deployment leverages **OpenNext v3** to transform your Next.js application into a serverless architecture optimized for AWS Lambda and CloudFront.
+
+### Supported Features
+
+✅ **App Router & Pages Router**  
+✅ **Server Components & Client Components**  
+✅ **Incremental Static Regeneration (ISR)**  
+✅ **Image Optimization**  
+✅ **Middleware & Edge Runtime**  
+✅ **API Routes**  
+✅ **Dynamic Routes**  
+✅ **Streaming SSR**  
+✅ **Server Actions**  
+✅ **Partial Prerendering**  
+✅ **Draft Mode**  
+
+## Installation
+
+### Prerequisites
+
+```bash
+# Required versions
+node >= 22.0.0
+pnpm >= 10.11.0
+next >= 14.0.0
+```
+
+### Package Installation
+
+```bash
+# Install the deployment package
+pnpm add -D @donswayo/pulumi-nextjs-aws
+
+# Install OpenNext for building
+pnpm add -D @opennextjs/aws
+```
+
+### Monorepo Configuration
+
+For pnpm workspaces, configure `.npmrc`:
+
+```
+node-linker=hoisted
+shamefully-hoist=true
+hoist=true
+```
+
+This ensures OpenNext can properly bundle dependencies.
+
+## Configuration
+
+### Next.js Configuration
+
+```typescript
+// next.config.ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  // Required for standalone output
+  output: "standalone",
+  
+  // Enable experimental features
+  experimental: {
+    // Enable PPR for better performance
+    ppr: true,
+  },
+  
+  // Image optimization settings
+  images: {
+    domains: ["example.com"],
+    formats: ["image/avif", "image/webp"],
+  },
+  
+  // Transpile workspace packages
+  transpilePackages: ["@repo/ui", "@repo/utils"],
+  
+  // Environment variables
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  },
+};
+
+export default nextConfig;
+```
+
+### OpenNext Configuration
+
+Create `open-next.config.ts`:
+
+```typescript
+import type { OpenNextConfig } from "@opennextjs/aws";
+
+const config: OpenNextConfig = {
+  buildCommand: "pnpm build",
+  
+  // Dangerous settings (use with caution)
+  dangerous: {
+    disableTagCache: false,
+    disableIncrementalCache: false,
+  },
+  
+  // Function splitting
+  functions: {
+    api: {
+      routes: ["/api/*"],
+      patterns: ["api/*"],
+    },
+  },
+  
+  // Build output settings
+  buildOutput: ".open-next",
+  appPath: ".",
+  packageJsonPath: "./package.json",
+};
+
+export default config;
+```
+
+## Deployment Setup
+
+### Basic Deployment
+
+```typescript
+// infra/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import { Next } from "@donswayo/pulumi-nextjs-aws";
+
+const site = new Next("my-nextjs-app", {
+  // Required paths
+  appPath: "./apps/web",
+  openNextPath: "./apps/web/.open-next",
+  
+  // Enable streaming for better performance
+  streaming: true,
+  
+  // Environment variables
+  environment: {
+    NODE_ENV: "production",
+    NEXT_PUBLIC_API_URL: "https://api.example.com",
+    DATABASE_URL: process.env.DATABASE_URL!,
+  },
+});
+
+export const url = site.url;
+export const distributionId = site.distributionId;
+```
+
+### Advanced Configuration
+
+```typescript
+// infra/index.ts
+import * as pulumi from "@pulumi/pulumi";
+import { Next } from "@donswayo/pulumi-nextjs-aws";
+
+const site = new Next("production-app", {
+  appPath: ".",
+  openNextPath: ".open-next",
+  streaming: true,
+  
+  // Custom domain configuration
+  domain: {
+    name: "app.example.com",
+    certificateArn: "arn:aws:acm:us-east-1:123456789012:certificate/...",
+  },
+  
+  // Lambda configuration
+  lambda: {
+    // Server function (SSR/API)
+    server: {
+      memory: 2048,              // 2GB RAM
+      timeout: 30,               // 30 seconds
+      architecture: "arm64",     // ARM for cost savings
+      provisionedConcurrency: 5, // Reduce cold starts
+      environment: {
+        // Function-specific env vars
+        SERVER_ONLY_SECRET: process.env.SERVER_SECRET,
+      },
+    },
+    
+    // Image optimization function
+    image: {
+      memory: 3008,              // 3GB for image processing
+      timeout: 30,
+      architecture: "arm64",
+    },
+    
+    // ISR revalidation function
+    revalidation: {
+      memory: 1024,
+      timeout: 300,              // 5 minutes for rebuilds
+    },
+    
+    // Warmer function (reduces cold starts)
+    warmer: {
+      enabled: true,
+      concurrency: 10,           // Keep 10 instances warm
+      schedule: "rate(5 minutes)",
+    },
+  },
+  
+  // CloudFront configuration
+  priceClass: "PriceClass_All",  // All edge locations
+  
+  cloudFrontLogging: {
+    bucket: "my-logs-bucket",
+    prefix: "cloudfront/",
+    includeCookies: false,
+  },
+  
+  // Cache configuration
+  cache: {
+    staticCacheMaxAge: 31536000,  // 1 year for static
+    serverCacheMaxAge: 60,         // 1 minute for SSR
+  },
+  
+  // Security headers
+  responseHeaders: {
+    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+  },
+  
+  // Tags for all resources
+  tags: {
+    Environment: "production",
+    Team: "frontend",
+    Project: "my-app",
+    CostCenter: "engineering",
+  },
+});
+```
+
+## Building Your Application
+
+### Development Build
+
+```bash
+# Standard Next.js build
+pnpm build
+
+# OpenNext build for AWS
+npx @opennextjs/aws build
+```
+
+### Production Build
+
+```bash
+# Clean previous builds
+rm -rf .open-next .next
+
+# Install production dependencies
+pnpm install --frozen-lockfile
+
+# Build with OpenNext
+npx @opennextjs/aws build
+
+# The output will be in .open-next/
+```
+
+### Build Output Structure
+
+```
+.open-next/
+├── server-function/          # Main Lambda for SSR
+│   ├── handler.mjs          # Lambda entry point
+│   ├── index.mjs            # Server code
+│   └── node_modules/        # Dependencies
+├── image-optimization/       # Image processing Lambda
+│   ├── handler.mjs
+│   └── node_modules/
+├── revalidation-function/    # ISR revalidation Lambda
+│   ├── handler.mjs
+│   └── index.mjs
+├── warmer-function/          # Cold start warmer
+│   └── handler.mjs
+├── assets/                   # Static files for S3
+│   ├── _next/static/
+│   └── public/
+└── cache/                    # Build cache
+```
+
+## Features Guide
+
+### App Router
+
+Full support for App Router features:
+
+```typescript
+// app/layout.tsx
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+
+// app/page.tsx
+export default async function Page() {
+  // Server Component - runs on Lambda
+  const data = await fetchData();
+  return <div>{data}</div>;
+}
+
+// app/api/route/route.ts
+export async function GET(request: Request) {
+  // API route - runs on Lambda
+  return Response.json({ message: "Hello from Lambda!" });
+}
+```
+
+### Incremental Static Regeneration (ISR)
+
+ISR works seamlessly with DynamoDB cache:
+
+```typescript
+// app/posts/[id]/page.tsx
+export const revalidate = 3600; // Revalidate every hour
+
+export async function generateStaticParams() {
+  const posts = await getPosts();
+  return posts.map((post) => ({
+    id: post.id,
+  }));
+}
+
+export default async function Post({ params }: { params: { id: string } }) {
+  const post = await getPost(params.id);
+  return <article>{post.content}</article>;
+}
+```
+
+### Image Optimization
+
+Automatic image optimization with dedicated Lambda:
+
+```typescript
+import Image from "next/image";
+
+export default function Gallery() {
+  return (
+    <Image
+      src="/hero.jpg"
+      alt="Hero"
+      width={1920}
+      height={1080}
+      priority
+      // Optimized on-demand by Lambda
+    />
+  );
+}
+```
+
+### Middleware
+
+Edge middleware runs on Lambda@Edge:
+
+```typescript
+// middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export function middleware(request: NextRequest) {
+  // Authentication check
+  const token = request.cookies.get("token");
+  
+  if (!token && request.nextUrl.pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+  
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/dashboard/:path*"],
+};
+```
+
+### Server Actions
+
+Server Actions work with Lambda:
+
+```typescript
+// app/actions.ts
+"use server";
+
+export async function createPost(formData: FormData) {
+  const title = formData.get("title");
+  const content = formData.get("content");
+  
+  // This runs on Lambda
+  await db.post.create({
+    data: { title, content },
+  });
+  
+  revalidatePath("/posts");
+}
+
+// app/new-post/page.tsx
+import { createPost } from "../actions";
+
+export default function NewPost() {
+  return (
+    <form action={createPost}>
+      <input name="title" />
+      <textarea name="content" />
+      <button type="submit">Create</button>
+    </form>
+  );
+}
+```
+
+### Streaming SSR
+
+Enable streaming for better performance:
+
+```typescript
+// Enable in deployment config
+const site = new Next("app", {
+  streaming: true, // Enable streaming responses
+});
+
+// app/page.tsx
+import { Suspense } from "react";
+
+async function SlowComponent() {
+  const data = await slowFetch();
+  return <div>{data}</div>;
+}
+
+export default function Page() {
+  return (
+    <div>
+      <h1>Instant heading</h1>
+      <Suspense fallback={<div>Loading...</div>}>
+        <SlowComponent />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+## Performance Optimization
+
+### 1. Lambda Optimization
+
+```typescript
+lambda: {
+  server: {
+    // Use ARM64 for 20% cost savings
+    architecture: "arm64",
+    
+    // Increase memory for CPU-intensive tasks
+    memory: 2048,
+    
+    // Provisioned concurrency for critical routes
+    provisionedConcurrency: 5,
+    
+    // Reserved concurrency to prevent throttling
+    reservedConcurrency: 100,
+  },
+}
+```
+
+### 2. Caching Strategy
+
+```typescript
+// app/api/data/route.ts
+export async function GET() {
+  const data = await fetchData();
+  
+  return Response.json(data, {
+    headers: {
+      // Cache in CloudFront for 1 hour
+      "Cache-Control": "public, max-age=3600",
+      // Stale-while-revalidate for 24 hours
+      "CDN-Cache-Control": "max-age=3600, stale-while-revalidate=86400",
+    },
+  });
+}
+```
+
+### 3. Bundle Optimization
+
+```typescript
+// next.config.ts
+const nextConfig: NextConfig = {
+  // Optimize bundle size
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ["@mui/material", "@mui/icons-material"],
+  },
+  
+  // Compress assets
+  compress: true,
+  
+  // Minimize JavaScript
+  swcMinify: true,
+};
+```
+
+### 4. Image Optimization
+
+```typescript
+// next.config.ts
+const nextConfig: NextConfig = {
+  images: {
+    // Use modern formats
+    formats: ["image/avif", "image/webp"],
+    
+    // Optimize device sizes
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+    
+    // Cache optimized images
+    minimumCacheTTL: 31536000, // 1 year
+  },
+};
+```
+
+## Monitoring & Debugging
+
+### CloudWatch Logs
+
+```bash
+# View server function logs
+aws logs tail /aws/lambda/my-app-server --follow
+
+# View image optimization logs
+aws logs tail /aws/lambda/my-app-image --follow
+
+# Search for errors
+aws logs filter-log-events \
+  --log-group-name /aws/lambda/my-app-server \
+  --filter-pattern "ERROR"
+```
+
+### Custom Metrics
+
+```typescript
+// lib/metrics.ts
+import { CloudWatch } from "aws-sdk";
+
+const cloudwatch = new CloudWatch();
+
+export async function trackMetric(name: string, value: number) {
+  await cloudwatch.putMetricData({
+    Namespace: "MyApp/Performance",
+    MetricData: [{
+      MetricName: name,
+      Value: value,
+      Unit: "Milliseconds",
+      Timestamp: new Date(),
+    }],
+  }).promise();
+}
+
+// Usage in API route
+export async function GET() {
+  const start = Date.now();
+  const data = await fetchData();
+  
+  await trackMetric("APIResponseTime", Date.now() - start);
+  
+  return Response.json(data);
+}
+```
+
+### Error Tracking
+
+```typescript
+// lib/error-tracking.ts
+export function captureError(error: Error, context?: any) {
+  console.error("Error captured:", {
+    message: error.message,
+    stack: error.stack,
+    context,
+    timestamp: new Date().toISOString(),
+  });
+  
+  // Send to monitoring service
+  // await sendToSentry(error, context);
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Module Not Found Errors
+
+**Problem**: Dependencies not found in Lambda
+```
+Cannot find module 'xyz'
+```
+
+**Solution**: Ensure proper hoisting in `.npmrc`:
+```
+node-linker=hoisted
+shamefully-hoist=true
+```
+
+#### 2. Large Lambda Bundle
+
+**Problem**: Deployment package too large
+```
+Deployment package is too large
+```
+
+**Solution**: Optimize dependencies:
+```typescript
+// next.config.ts
+const nextConfig: NextConfig = {
+  // Exclude unnecessary files
+  experimental: {
+    outputFileTracingExcludes: {
+      "*": ["**/*.test.js", "**/*.map"],
+    },
+  },
+};
+```
+
+#### 3. ISR Not Working
+
+**Problem**: Pages not revalidating
+
+**Solution**: Check DynamoDB and SQS configuration:
+```bash
+# Check DynamoDB table
+aws dynamodb describe-table --table-name my-app-isr-cache
+
+# Check SQS queue
+aws sqs get-queue-attributes \
+  --queue-url https://sqs.region.amazonaws.com/account/my-app-queue \
+  --attribute-names All
+```
+
+#### 4. Cold Start Issues
+
+**Problem**: Slow initial responses
+
+**Solution**: Enable provisioned concurrency:
+```typescript
+lambda: {
+  server: {
+    provisionedConcurrency: 5, // Keep 5 warm
+  },
+  warmer: {
+    enabled: true,
+    concurrency: 10,
+    schedule: "rate(5 minutes)",
+  },
+}
+```
+
+## Best Practices
+
+### 1. Environment Variables
+
+```typescript
+// Validate env vars at build time
+const requiredEnvVars = [
+  "DATABASE_URL",
+  "NEXT_PUBLIC_API_URL",
+];
+
+requiredEnvVars.forEach((envVar) => {
+  if (!process.env[envVar]) {
+    throw new Error(`Missing required env var: ${envVar}`);
+  }
+});
+```
+
+### 2. Database Connections
+
+```typescript
+// lib/db.ts
+import { PrismaClient } from "@prisma/client";
+
+// Singleton pattern for Lambda
+const globalForPrisma = global as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  // Connection pool settings for Lambda
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+  log: process.env.NODE_ENV === "development" ? ["query"] : [],
+});
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
+```
+
+### 3. API Rate Limiting
+
+```typescript
+// middleware.ts
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, "10 s"),
+});
+
+export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api")) {
+    const ip = request.ip ?? "127.0.0.1";
+    const { success } = await ratelimit.limit(ip);
+    
+    if (!success) {
+      return new Response("Too Many Requests", { status: 429 });
+    }
+  }
+}
+```
+
+## Migration from Vercel
+
+### 1. Environment Variables
+
+```bash
+# Export from Vercel
+vercel env pull .env.production
+
+# Update your Pulumi config
+environment: {
+  // Copy all env vars
+}
+```
+
+### 2. Configuration Changes
+
+```typescript
+// Remove Vercel-specific config
+// Before:
+const nextConfig = {
+  images: {
+    loader: "custom",
+    loaderFile: "./vercel-loader.js",
+  },
+};
+
+// After:
+const nextConfig = {
+  images: {
+    // Works automatically with our platform
+  },
+};
+```
+
+### 3. Domain Migration
+
+```typescript
+// Configure domain in Pulumi
+domain: {
+  name: "app.example.com",
+  // Create certificate in AWS Certificate Manager
+  certificateArn: "arn:aws:acm:us-east-1:...",
+}
+```
+
+## Cost Optimization
+
+### Typical Costs (1M requests/month)
+
+| Component | Cost | Notes |
+|-----------|------|-------|
+| Lambda Compute | $8-15 | With ARM64 |
+| Lambda Requests | $2 | $0.20 per 1M |
+| CloudFront Transfer | $10-20 | Varies by region |
+| CloudFront Requests | $1 | $0.01 per 10K |
+| S3 Storage | $1-3 | Static assets |
+| DynamoDB | $0-5 | ISR cache |
+| **Total** | **$22-46/month** | |
+
+### Cost Reduction Tips
+
+1. **Use ARM64**: 20% cheaper than x86
+2. **Optimize Images**: Reduce bandwidth costs
+3. **Enable Caching**: Reduce Lambda invocations
+4. **Set TTLs**: Longer cache = lower costs
+5. **Use Compression**: Reduce transfer costs
+
+## Conclusion
+
+The Next.js deployment platform provides:
+- ✅ Full Next.js feature support
+- ✅ Automatic scaling
+- ✅ Global performance
+- ✅ Cost efficiency
+- ✅ Production reliability
+
+Ready to deploy? Check out our [Quick Start Guide](/docs/quickstart) or explore [advanced configurations](/docs/configuration).

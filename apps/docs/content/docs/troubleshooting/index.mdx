@@ -1,0 +1,360 @@
+---
+title: Troubleshooting
+description: Common issues, solutions, and debugging techniques
+icon: BugIcon
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
+Find solutions to common problems and learn debugging techniques.
+
+## Quick Solutions
+
+<Cards>
+  <Card 
+    title="Common Issues" 
+    href="/docs/troubleshooting/common-issues"
+    description="Solutions to frequently encountered problems"
+  />
+  <Card 
+    title="Build Errors" 
+    href="/docs/troubleshooting/build-errors"
+    description="Fixing build and compilation issues"
+  />
+  <Card 
+    title="Runtime Errors" 
+    href="/docs/troubleshooting/runtime-errors"
+    description="Debugging Lambda and application errors"
+  />
+  <Card 
+    title="Performance Issues" 
+    href="/docs/troubleshooting/performance"
+    description="Optimizing slow deployments and cold starts"
+  />
+</Cards>
+
+## Frequently Asked Questions
+
+<Accordions>
+<Accordion title="Why is my deployment failing?">
+
+Common causes of deployment failures:
+
+1. **AWS Credentials**: Ensure your AWS credentials are properly configured
+2. **IAM Permissions**: Check that your IAM user has necessary permissions
+3. **Build Errors**: Review build logs for compilation errors
+4. **Package Size**: Lambda packages must be under 250MB unzipped
+
+```bash
+# Check AWS credentials
+aws sts get-caller-identity
+
+# Verify Pulumi login
+pulumi whoami
+```
+
+</Accordion>
+
+<Accordion title="Why are my environment variables not working?">
+
+Environment variables require specific prefixes for client-side access:
+
+- **Next.js**: Use `NEXT_PUBLIC_` prefix
+- **SvelteKit**: Use `PUBLIC_` prefix  
+- **React Router**: Use `VITE_` prefix
+
+Server-side variables don't need prefixes:
+
+```typescript
+// ✅ Correct
+NEXT_PUBLIC_API_URL="https://api.example.com"  // Client
+DATABASE_URL="postgresql://..."                // Server
+
+// ❌ Wrong
+API_URL="https://api.example.com"              // Not accessible on client
+```
+
+</Accordion>
+
+<Accordion title="How do I reduce cold starts?">
+
+Several strategies to minimize cold starts:
+
+1. **Use ARM64 architecture** (starts faster)
+2. **Enable provisioned concurrency**
+3. **Optimize bundle size**
+4. **Use warmer functions**
+
+```typescript
+lambda: {
+  architecture: "arm64",
+  provisionedConcurrency: 5,
+  warmer: {
+    enabled: true,
+    concurrency: 10,
+    schedule: "rate(5 minutes)",
+  },
+}
+```
+
+</Accordion>
+
+<Accordion title="Why is my app slow?">
+
+Common performance issues and solutions:
+
+1. **Large bundles**: Optimize imports and use code splitting
+2. **No caching**: Add proper cache headers
+3. **Insufficient memory**: Increase Lambda memory
+4. **Cold starts**: Use warming strategies
+
+```typescript
+// Add cache headers
+return new Response(data, {
+  headers: {
+    "Cache-Control": "public, max-age=3600",
+  },
+});
+```
+
+</Accordion>
+
+<Accordion title="How do I debug Lambda errors?">
+
+Use CloudWatch logs for debugging:
+
+```bash
+# View real-time logs
+aws logs tail /aws/lambda/my-function --follow
+
+# Search for errors
+aws logs filter-log-events \
+  --log-group-name /aws/lambda/my-function \
+  --filter-pattern "ERROR"
+```
+
+Add detailed logging in your code:
+
+```typescript
+console.log(JSON.stringify({
+  event,
+  context,
+  environment: process.env,
+}, null, 2));
+```
+
+</Accordion>
+</Accordions>
+
+## Debug Checklist
+
+<Callout type="info">
+  Work through this checklist when encountering issues:
+</Callout>
+
+### Build Issues
+- [ ] Node.js version is 22+
+- [ ] All dependencies installed
+- [ ] Build command runs locally
+- [ ] No TypeScript errors
+- [ ] Environment variables set
+
+### Deployment Issues
+- [ ] AWS credentials configured
+- [ ] Pulumi logged in
+- [ ] IAM permissions granted
+- [ ] Region is correct
+- [ ] Stack exists
+
+### Runtime Issues
+- [ ] CloudWatch logs checked
+- [ ] Environment variables verified
+- [ ] Lambda memory sufficient
+- [ ] Timeout appropriate
+- [ ] Dependencies included
+
+### Performance Issues
+- [ ] Bundle size optimized
+- [ ] Caching enabled
+- [ ] Cold starts minimized
+- [ ] Database connections pooled
+- [ ] Images optimized
+
+## Common Error Messages
+
+### "Module not found"
+
+```bash
+Error: Cannot find module 'xyz'
+```
+
+**Solution**: Ensure dependency is in `dependencies` not `devDependencies`:
+
+```json
+{
+  "dependencies": {
+    "xyz": "^1.0.0"  // ✅ Will be included
+  },
+  "devDependencies": {
+    "abc": "^1.0.0"  // ❌ Won't be included
+  }
+}
+```
+
+### "Deployment package too large"
+
+```bash
+Error: Unzipped size must be smaller than 262144000 bytes
+```
+
+**Solution**: Optimize your bundle:
+
+1. Exclude unnecessary files
+2. Use Lambda layers
+3. Optimize dependencies
+4. Enable compression
+
+### "Task timed out"
+
+```bash
+Task timed out after 10.00 seconds
+```
+
+**Solution**: Increase Lambda timeout:
+
+```typescript
+lambda: {
+  timeout: 30,  // Increase from default 10
+}
+```
+
+## Debugging Tools
+
+### Local Testing
+
+Test Lambda functions locally:
+
+```bash
+# Install SAM CLI
+brew install aws-sam-cli
+
+# Test locally
+sam local start-api
+```
+
+### Performance Profiling
+
+```typescript
+// Add timing to your code
+console.time('operation');
+await someOperation();
+console.timeEnd('operation');
+
+// Memory usage
+console.log(process.memoryUsage());
+```
+
+### Network Debugging
+
+```typescript
+// Log all requests
+export async function middleware(request: Request) {
+  console.log({
+    url: request.url,
+    method: request.method,
+    headers: Object.fromEntries(request.headers),
+  });
+}
+```
+
+## Getting Help
+
+### Resources
+
+- 📚 [Documentation](/docs)
+- 💬 [GitHub Discussions](https://github.com/donswayo/pulu-front/discussions)
+- 🐛 [Issue Tracker](https://github.com/donswayo/pulu-front/issues)
+- 📧 [Email Support](mailto:support@example.com)
+
+### When Reporting Issues
+
+Include this information:
+
+```markdown
+**Environment:**
+- Node version: 
+- Framework: 
+- Package version:
+- OS:
+
+**Configuration:**
+```typescript
+// Your config
+```
+
+**Error:**
+```
+Full error message
+```
+
+**Steps to Reproduce:**
+1. 
+2. 
+3. 
+
+**Expected Behavior:**
+
+**Actual Behavior:**
+```
+
+## Quick Fixes
+
+### Reset Everything
+
+```bash
+# Clean all caches
+rm -rf node_modules .next .open-next
+pnpm install
+pnpm build
+
+# Reset Pulumi state
+pulumi stack export | pulumi stack import
+
+# Force redeploy
+pulumi up --force
+```
+
+### Update Everything
+
+```bash
+# Update packages
+pnpm update --latest
+
+# Update Pulumi
+pulumi upgrade
+
+# Update AWS CLI
+brew upgrade awscli
+```
+
+## What's Next?
+
+<Cards>
+  <Card 
+    title="Common Issues" 
+    href="/docs/troubleshooting/common-issues"
+    description="Browse solutions"
+  />
+  <Card 
+    title="Performance Guide" 
+    href="/docs/troubleshooting/performance"
+    description="Optimize your app"
+  />
+  <Card 
+    title="Contact Support" 
+    href="mailto:support@example.com"
+    description="Get direct help"
+  />
+</Cards>

@@ -1,0 +1,12 @@
+{
+  "title": "Troubleshooting",
+  "pages": [
+    "index",
+    "common-issues",
+    "build-errors",
+    "runtime-errors",
+    "performance",
+    "debugging",
+    "faq"
+  ]
+}

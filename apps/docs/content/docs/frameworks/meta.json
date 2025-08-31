@@ -1,0 +1,9 @@
+{
+  "title": "Framework Guides",
+  "pages": [
+    "index",
+    "nextjs",
+    "sveltekit",
+    "react-router"
+  ]
+}

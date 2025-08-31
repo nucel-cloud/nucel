@@ -1,0 +1,369 @@
+---
+title: Quick Start
+description: Deploy your first application in 5 minutes
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Deploy your first application to AWS in under 5 minutes. Choose your framework and follow the steps.
+
+<Callout type="info">
+  **Prerequisites**: Make sure you have Node.js 22+, pnpm 10.11+, and AWS credentials configured. See [Prerequisites](/docs/getting-started/prerequisites) for detailed setup.
+</Callout>
+
+## Choose Your Framework
+
+<Tabs items={['Next.js', 'SvelteKit', 'React Router']}>
+  <Tab value="Next.js">
+
+<Steps>
+<Step>
+
+### Create or use existing Next.js app
+
+```bash
+npx create-next-app@latest my-app --typescript --tailwind --app
+cd my-app
+```
+
+</Step>
+<Step>
+
+### Install deployment package
+
+```bash
+pnpm add -D @donswayo/pulumi-nextjs-aws
+```
+
+</Step>
+<Step>
+
+### Configure package manager
+
+Create `.npmrc` in your project root:
+
+```ini
+node-linker=hoisted
+shamefully-hoist=true
+hoist=true
+```
+
+</Step>
+<Step>
+
+### Update Next.js config
+
+```typescript title="next.config.ts"
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  output: "standalone",
+  transpilePackages: ["@repo/ui"], // Add workspace packages
+};
+
+export default nextConfig;
+```
+
+</Step>
+<Step>
+
+### Build with OpenNext
+
+```bash
+pnpm add -D @opennextjs/aws
+npx @opennextjs/aws build
+```
+
+</Step>
+<Step>
+
+### Create deployment configuration
+
+```typescript title="infra/index.ts"
+import * as pulumi from "@pulumi/pulumi";
+import { Next } from "@donswayo/pulumi-nextjs-aws";
+
+const site = new Next("my-nextjs-app", {
+  appPath: ".",
+  openNextPath: ".open-next",
+  streaming: true,
+  
+  environment: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "",
+  },
+  
+  lambda: {
+    server: {
+      memory: 1024,
+      timeout: 30,
+    },
+  },
+});
+
+export const url = site.url;
+export const distributionId = site.distributionId;
+```
+
+</Step>
+<Step>
+
+### Deploy to AWS
+
+```bash
+cd infra
+pulumi stack init production
+pulumi up
+```
+
+Your app is now live! 🎉
+
+</Step>
+</Steps>
+
+  </Tab>
+  <Tab value="SvelteKit">
+
+<Steps>
+<Step>
+
+### Create or use existing SvelteKit app
+
+```bash
+npm create svelte@latest my-app
+cd my-app
+npm install
+```
+
+</Step>
+<Step>
+
+### Install deployment package
+
+```bash
+pnpm add -D @donswayo/pulumi-sveltekit-aws
+```
+
+</Step>
+<Step>
+
+### Configure adapter
+
+```javascript title="svelte.config.js"
+import adapter from '@donswayo/pulumi-sveltekit-aws/adapter';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
+  preprocess: vitePreprocess(),
+  
+  kit: {
+    adapter: adapter({
+      out: '.svelte-kit-aws',
+      precompress: false,
+      polyfill: true,
+    })
+  }
+};
+
+export default config;
+```
+
+</Step>
+<Step>
+
+### Build your app
+
+```bash
+pnpm build
+```
+
+</Step>
+<Step>
+
+### Create deployment configuration
+
+```typescript title="infra/index.ts"
+import * as pulumi from "@pulumi/pulumi";
+import { SvelteKitAwsDeployment } from "@donswayo/pulumi-sveltekit-aws";
+
+const app = new SvelteKitAwsDeployment("my-sveltekit-app", {
+  buildPath: "../.svelte-kit-aws",
+  
+  environment: {
+    PUBLIC_API_URL: process.env.PUBLIC_API_URL || "",
+  },
+  
+  lambda: {
+    memory: 512,
+    timeout: 30,
+    architecture: "arm64",
+  },
+});
+
+export const url = app.url;
+export const distributionId = app.distributionId;
+```
+
+</Step>
+<Step>
+
+### Deploy to AWS
+
+```bash
+cd infra
+pulumi stack init production
+pulumi up
+```
+
+Your app is now live! 🎉
+
+</Step>
+</Steps>
+
+  </Tab>
+  <Tab value="React Router">
+
+<Steps>
+<Step>
+
+### Create or use existing React Router app
+
+```bash
+npx create-react-router@latest my-app
+cd my-app
+```
+
+</Step>
+<Step>
+
+### Install deployment package
+
+```bash
+pnpm add -D @donswayo/pulumi-react-router-aws
+```
+
+</Step>
+<Step>
+
+### Configure adapter
+
+```typescript title="vite.config.ts"
+import { vitePlugin as reactRouter } from "@react-router/dev/vite";
+import adapter from "@donswayo/pulumi-react-router-aws/adapter";
+import { defineConfig } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
+
+export default defineConfig({
+  plugins: [
+    reactRouter({
+      adapter: adapter({
+        out: ".react-router-aws",
+      }),
+    }),
+    tsconfigPaths(),
+  ],
+});
+```
+
+</Step>
+<Step>
+
+### Build your app
+
+```bash
+pnpm build
+```
+
+</Step>
+<Step>
+
+### Create deployment configuration
+
+```typescript title="infra/index.ts"
+import * as pulumi from "@pulumi/pulumi";
+import { ReactRouterAwsDeployment } from "@donswayo/pulumi-react-router-aws";
+
+const app = new ReactRouterAwsDeployment("my-react-router-app", {
+  buildPath: "../.react-router-aws",
+  
+  environment: {
+    API_URL: process.env.API_URL || "",
+  },
+  
+  lambda: {
+    memory: 512,
+    timeout: 30,
+    architecture: "arm64",
+  },
+});
+
+export const url = app.url;
+export const distributionId = app.distributionId;
+```
+
+</Step>
+<Step>
+
+### Deploy to AWS
+
+```bash
+cd infra
+pulumi stack init production
+pulumi up
+```
+
+Your app is now live! 🎉
+
+</Step>
+</Steps>
+
+  </Tab>
+</Tabs>
+
+## Using the Nucel CLI
+
+For an even simpler deployment experience, use the Nucel CLI:
+
+<Steps>
+<Step>
+
+### Install Nucel CLI
+
+```bash
+npm install -g @donswayo/nucel-cli
+```
+
+</Step>
+<Step>
+
+### Deploy automatically
+
+The CLI auto-detects your framework and handles everything:
+
+```bash
+# Deploy to development
+nucel deploy
+
+# Deploy to production
+nucel deploy --stack production
+
+# Preview changes
+nucel deploy --preview
+```
+
+</Step>
+</Steps>
+
+## What's Next?
+
+<Callout>
+  **Congratulations!** You've deployed your first application. Here's what to explore next:
+</Callout>
+
+- 📖 Learn about [Core Concepts](/docs/getting-started/concepts)
+- ⚙️ Explore [Configuration Options](/docs/configuration)
+- 🚀 Set up [Production Deployment](/docs/deployment/production)
+- 📊 Configure [Monitoring](/docs/deployment/monitoring)
+- 🔒 Review [Security Best Practices](/docs/deployment/security)
