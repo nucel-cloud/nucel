@@ -1,59 +1,228 @@
 ---
-title: Getting Started
-description: Deploy modern web frameworks to AWS with Pulumi
+title: Quick Start
+description: Getting Started with Nucel
+icon: Album
 ---
 
-## Welcome to Pulumi AWS Frameworks
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Accordions, Accordion } from 'fumadocs-ui/components/accordion';
+import { CpuIcon, PanelsTopLeft, Database, Terminal } from 'lucide-react';
 
-This documentation covers a collection of Pulumi components designed to simplify deploying modern web applications to AWS. Our packages support:
+## Introduction
 
-- **Next.js** - Full-stack React framework with OpenNext
-- **SvelteKit** - Fast and modern Svelte framework  
-- **React Router v7** - The latest React Router with server-side rendering
+Nucel <span className='text-fd-muted-foreground text-sm'>(New-cel)</span> is an **open-source deployment platform** for modern web applications, designed to be fast, scalable,
+and compose seamlessly with AWS infrastructure.
 
-## Why Use These Packages?
-
-### 🚀 Production-Ready Infrastructure
-Each package provides battle-tested AWS infrastructure patterns optimized for their respective frameworks.
-
-### ⚡ Zero-Config Deployment
-Get started with sensible defaults, then customize as needed.
-
-### 🔧 Framework-Specific Optimizations
-Each package is tailored to leverage the unique features of its framework.
-
-### 💰 Cost-Effective
-Serverless architecture means you only pay for what you use.
-
-## Prerequisites
-
-Before you begin, ensure you have:
-
-1. **Node.js 18+** installed
-2. **Pulumi CLI** installed and configured
-3. **AWS Account** with appropriate permissions
-4. **AWS CLI** configured with credentials
-
-## Quick Start
-
-Choose your framework to get started:
+Nucel has different parts:
 
 <Cards>
-  <Card title="Next.js" href="/docs/packages/nextjs" description="Deploy Next.js apps with OpenNext to AWS" />
-  <Card title="SvelteKit" href="/docs/packages/sveltekit" description="Deploy SvelteKit applications to AWS Lambda" />
-  <Card title="React Router" href="/docs/packages/react-router" description="Deploy React Router v7 apps to AWS" />
+
+<Card icon={<CpuIcon className="text-purple-300" />} title='Deployment Packages'>
+
+Handles infrastructure as code for Next.js, SvelteKit, and React Router deployments with optimized AWS patterns.
+
+</Card>
+
+<Card icon={<PanelsTopLeft className="text-blue-300" />} title='AWS Infrastructure'>
+
+Leverages CloudFront, Lambda@Edge, S3, and DynamoDB for globally distributed, serverless deployments.
+
+</Card>
+
+<Card icon={<Database />} title='Framework Adapters'>
+
+Custom adapters for each framework ensuring optimal performance and feature compatibility on AWS.
+
+</Card>
+
+<Card icon={<Terminal />} title='Nucel CLI'>
+
+A command line tool to deploy applications with a single command, handling all infrastructure complexity.
+
+</Card>
+
 </Cards>
 
-## Core Concepts
+<Callout title="Want to learn more?">
+  Read our in-depth [What is Nucel](/docs/what-is-nucel) introduction.
+</Callout>
 
-All packages share common patterns:
+### Terminology
 
-- **Serverless Architecture** - Lambda functions for SSR
-- **CDN Distribution** - CloudFront for global content delivery
-- **Static Asset Hosting** - S3 for efficient static file serving
-- **Infrastructure as Code** - Version-controlled, reproducible deployments
+**Infrastructure as Code (IaC):** Define and manage your infrastructure using code instead of manual processes. Nucel uses Pulumi for IaC with zero configuration required.
 
-## Support
+**Stacks:** Isolated deployment environments (development, staging, production) with independent resources and configurations.
 
-- [GitHub Issues](https://github.com/DonsWayo/pulu-front/issues)
-- [Examples Repository](https://github.com/DonsWayo/pulu-front/tree/main/apps)
+## Automatic Installation
+
+A minimum version of Node.js 22 is required.
+
+```bash tab="npm"
+npm install -g @donswayo/nucel-cli
+```
+
+```bash tab="pnpm"
+pnpm add -g @donswayo/nucel-cli
+```
+
+```bash tab="yarn"
+yarn global add @donswayo/nucel-cli
+```
+
+```bash tab="bun"
+bun add -g @donswayo/nucel-cli
+```
+
+### Your First Deployment
+
+Deploy your application with a single command:
+
+```bash
+# In your project directory
+nucel deploy
+```
+
+Nucel will:
+- Detect your framework automatically
+- Build your application
+- Provision AWS infrastructure
+- Deploy to a CloudFront URL
+
+<Callout title='From Existing Codebase?'>
+
+    Nucel works with existing Next.js, SvelteKit, and React Router projects. Just run `nucel deploy` in your project directory.
+
+</Callout>
+
+### Enjoy!
+
+Your application is now live on AWS with:
+- Global CDN distribution
+- Auto-scaling serverless functions
+- Enterprise-grade infrastructure
+- Zero configuration required
+
+Visit your CloudFront URL to see your deployed application.
+
+```bash
+https://[your-distribution].cloudfront.net
+```
+
+## FAQ
+
+Common questions you may encounter.
+
+<Accordions>
+    <Accordion id='change-stack' title="How to deploy to different environments?">
+        You can deploy to different stacks (environments) using the `--stack` flag:
+
+        ```bash
+        # Deploy to development (default)
+        nucel deploy
+
+        # Deploy to production
+        nucel deploy --stack production
+
+        # Deploy to custom environment
+        nucel deploy --stack feature-branch
+        ```
+
+        Each stack maintains its own isolated AWS resources and configuration.
+    </Accordion>
+    <Accordion id='custom-domain' title="How to use a custom domain?">
+        Add your custom domain in the `nucel.config.ts` file:
+
+        ```ts title="nucel.config.ts"
+        export default {
+          domain: 'app.example.com',
+          certificateArn: 'arn:aws:acm:us-east-1:...'
+        }
+        ```
+
+        The certificate must be in us-east-1 region for CloudFront.
+    </Accordion>
+    <Accordion id='environment-variables' title='How are environment variables handled?'>
+        Nucel automatically loads environment variables from `.env` files:
+
+        - `.env` - Always loaded
+        - `.env.local` - Local overrides (git ignored)
+        - `.env.[stack]` - Stack-specific variables
+        - `.env.[stack].local` - Stack-specific local overrides
+
+        Framework-specific public prefixes are automatically handled:
+        - Next.js: `NEXT_PUBLIC_*`
+        - SvelteKit: `PUBLIC_*`
+        - React Router: `VITE_*`
+    </Accordion>
+    <Accordion id='costs' title="What are the AWS costs?">
+        You only pay for AWS usage:
+        - Lambda: $0.20 per 1M requests
+        - CloudFront: $0.085 per GB transferred
+        - S3: $0.023 per GB stored
+        - No Nucel subscription fees
+
+        Most applications cost less than $5/month for moderate traffic.
+    </Accordion>
+    <Accordion id='preview-deployments' title="How to preview changes before deploying?">
+        Use the `--preview` flag to see what changes will be made:
+
+        ```bash
+        nucel deploy --preview
+        ```
+
+        This shows a detailed diff of infrastructure changes without applying them.
+    </Accordion>
+</Accordions>
+
+## Learn More
+
+New to Nucel? Don't worry, we're here to help.
+
+If you find anything confusing, please open an issue on [GitHub](https://github.com/donswayo/pulu-front/issues).
+
+### Writing Your App
+
+For building applications, check out the framework guides:
+
+<Cards>
+  <Card href="/docs/frameworks/nextjs" title="Next.js">
+    Deploy Next.js apps with App Router, ISR, and streaming SSR support.
+  </Card>
+  <Card href="/docs/frameworks/sveltekit" title="SvelteKit">
+    Full SvelteKit support including form actions and server-side rendering.
+  </Card>
+  <Card href="/docs/frameworks/react-router" title="React Router v7">
+    Deploy React Router v7 (with Remix merged) - full SSR, loaders, actions.
+  </Card>
+  <Card
+    href="/docs/configuration"
+    title="Configuration"
+    description="Customize build, runtime, and infrastructure settings"
+  />
+</Cards>
+
+### Production Deployment
+
+<Cards>
+  <Card
+    href="/docs/deployment/production"
+    title="Production Best Practices"
+    description="Security, monitoring, and optimization tips"
+  />
+  <Card
+    href="/docs/deployment/cicd"
+    title="CI/CD Integration"
+    description="Deploy from GitHub Actions and GitLab CI"
+  />
+  <Card
+    href="/docs/deployment/monitoring"
+    title="Monitoring"
+    description="CloudWatch logs, metrics, and alerting"
+  />
+  <Card
+    href="/docs/troubleshooting"
+    title="Troubleshooting"
+    description="Common issues and solutions"
+  />
+</Cards>
