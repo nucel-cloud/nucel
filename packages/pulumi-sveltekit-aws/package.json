@@ -1,6 +1,6 @@
 {
   "name": "@donswayo/pulumi-sveltekit-aws",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "SvelteKit adapter and Pulumi components for deploying to AWS",
   "type": "module",
   "main": "./dist/index.js",
