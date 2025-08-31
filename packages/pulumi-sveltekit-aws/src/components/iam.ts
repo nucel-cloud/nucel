@@ -20,7 +20,7 @@ export function createServerRole(
         Service: "lambda.amazonaws.com",
       }),
       managedPolicyArns: [
-        aws.iam.ManagedPolicies.AWSLambdaBasicExecutionRole,
+        aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole,
       ],
       tags: {
         ...tags,

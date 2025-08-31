@@ -1,6 +1,6 @@
 {
   "name": "@donswayo/pulumi-nextjs-aws",
-  "version": "1.1.2",
+  "version": "1.1.4",
   "description": "Reusable Pulumi components for deploying Next.js apps with OpenNext to AWS",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,21 +18,20 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@pulumi/aws": "^6.0.0",
-    "@pulumi/command": "^1.1.0",
-    "@pulumi/pulumi": "^3.0.0",
+    "@pulumi/aws": "catalog:",
+    "@pulumi/command": "catalog:",
+    "@pulumi/pulumi": "catalog:",
     "glob": "^11.0.0",
     "mime": "^4.0.0"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
-    "@types/mime": "^4.0.0",
-    "@types/node": "^22.13.9",
-    "typescript": "^5.7.3"
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
-    "@pulumi/aws": "^6.0.0",
-    "@pulumi/pulumi": "^3.0.0"
+    "@pulumi/aws": "catalog:",
+    "@pulumi/pulumi": "catalog:"
   },
   "files": [
     "dist"

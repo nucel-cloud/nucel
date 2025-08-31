@@ -1,6 +1,6 @@
 {
   "name": "@donswayo/pulumi-react-router-aws",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "React Router v7 adapter and Pulumi components for deploying to AWS Lambda, CloudFront, and S3",
   "type": "module",
   "main": "./dist/index.js",
@@ -25,23 +25,23 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@pulumi/aws": "^6.83.0",
-    "@pulumi/pulumi": "^3.147.0",
-    "archiver": "^7.0.1",
-    "globby": "^14.0.2",
-    "mime-types": "^2.1.35"
+    "@pulumi/aws": "catalog:",
+    "@pulumi/pulumi": "catalog:",
+    "archiver": "catalog:",
+    "globby": "catalog:",
+    "mime-types": "catalog:"
   },
   "devDependencies": {
-    "@react-router/dev": "^7.8.2",
+    "@react-router/dev": "catalog:",
     "@repo/typescript-config": "workspace:*",
-    "@types/archiver": "^6.0.3",
-    "@types/mime-types": "^2.1.4",
-    "@types/node": "^22.16.3",
-    "typescript": "^5.8.2"
+    "@types/archiver": "catalog:",
+    "@types/mime-types": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
-    "@react-router/dev": "^7.0.0",
-    "@react-router/node": "^7.0.0"
+    "@react-router/dev": "catalog:",
+    "@react-router/node": "catalog:"
   },
   "license": "MIT",
   "publishConfig": {
