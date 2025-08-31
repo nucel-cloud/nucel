@@ -27,8 +27,8 @@ export function createServerRole(
       Service: "lambda.amazonaws.com",
     }),
     managedPolicyArns: [
-      aws.iam.ManagedPolicies.AWSLambdaBasicExecutionRole,
-      aws.iam.ManagedPolicies.AWSXRayDaemonWriteAccess,
+      aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole,
+      aws.iam.ManagedPolicy.AWSXRayDaemonWriteAccess,
     ],
     tags,
   }, opts);
@@ -103,8 +103,8 @@ export function createImageRole(
       Service: "lambda.amazonaws.com",
     }),
     managedPolicyArns: [
-      aws.iam.ManagedPolicies.AWSLambdaBasicExecutionRole,
-      aws.iam.ManagedPolicies.AWSXRayDaemonWriteAccess,
+      aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole,
+      aws.iam.ManagedPolicy.AWSXRayDaemonWriteAccess,
     ],
     tags,
   }, opts);
@@ -135,8 +135,8 @@ export function createRevalidationRole(
       Service: "lambda.amazonaws.com",
     }),
     managedPolicyArns: [
-      aws.iam.ManagedPolicies.AWSLambdaBasicExecutionRole,
-      aws.iam.ManagedPolicies.AWSXRayDaemonWriteAccess,
+      aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole,
+      aws.iam.ManagedPolicy.AWSXRayDaemonWriteAccess,
     ],
     tags,
   }, opts);
@@ -172,7 +172,7 @@ export function createWarmerRole(
       Service: "lambda.amazonaws.com",
     }),
     managedPolicyArns: [
-      aws.iam.ManagedPolicies.AWSLambdaBasicExecutionRole,
+      aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole,
     ],
     tags,
   }, opts);
