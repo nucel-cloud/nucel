@@ -1,10 +1,25 @@
 {
-  "title": "Documentation",
+  "title": "Nucel",
+  "description": "Deploy modern web applications to AWS",
+  "icon": "Building",
+  "root": true,
   "pages": [
+    "---Introduction---",
     "index",
+    "what-is-nucel",
+    "comparisons",
+    "---Getting Started---",
     "getting-started",
-    "packages",
-    "guides",
-    "api-reference"
+    "manual-installation",
+    "---Frameworks---",
+    "frameworks",
+    "---Deployment---",
+    "deployment",
+    "---Configuration---",
+    "configuration",
+    "cli",
+    "---Support---",
+    "troubleshooting",
+    "faq"
   ]
 }
