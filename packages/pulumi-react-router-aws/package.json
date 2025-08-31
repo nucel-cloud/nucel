@@ -43,5 +43,8 @@
     "@react-router/dev": "^7.0.0",
     "@react-router/node": "^7.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }

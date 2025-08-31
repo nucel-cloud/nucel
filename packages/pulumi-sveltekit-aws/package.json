@@ -42,5 +42,8 @@
   "peerDependencies": {
     "@sveltejs/kit": "^2.0.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }
