@@ -1,0 +1,794 @@
+---
+title: Configuration Reference
+description: Complete configuration options for all deployment packages
+---
+
+# Configuration Reference
+
+Complete reference for all configuration options across Next.js, SvelteKit, and React Router deployments.
+
+## Common Configuration
+
+All frameworks share these configuration options:
+
+### Base Configuration
+
+```typescript
+interface BaseConfiguration {
+  // Build output path
+  buildPath: string;
+  
+  // Environment variables for Lambda
+  environment?: Record<string, string>;
+  
+  // Lambda configuration
+  lambda?: {
+    memory?: number;      // 128-10240 MB
+    timeout?: number;     // 1-900 seconds
+    architecture?: "x86_64" | "arm64";
+  };
+  
+  // CloudFront price class
+  priceClass?: string;
+  
+  // Custom domain configuration
+  domain?: {
+    name: string;
+    certificateArn?: string;
+  };
+  
+  // AWS resource tags
+  tags?: Record<string, string>;
+}
+```
+
+### Environment Variables
+
+```typescript
+environment: {
+  // Server-side variables (available in Lambda)
+  DATABASE_URL: "postgresql://...",
+  API_KEY: "secret-key",
+  NODE_ENV: "production",
+  
+  // Client-side variables (framework-specific prefixes)
+  NEXT_PUBLIC_API_URL: "https://api.example.com",  // Next.js
+  PUBLIC_API_URL: "https://api.example.com",       // SvelteKit
+  VITE_API_URL: "https://api.example.com",        // React Router
+}
+```
+
+### Lambda Configuration
+
+```typescript
+lambda: {
+  // Memory allocation (MB)
+  memory: 1024,        // Default: 512
+  
+  // Function timeout (seconds)
+  timeout: 30,         // Default: 10
+  
+  // CPU architecture
+  architecture: "arm64", // Default: "x86_64"
+  
+  // Reserved concurrent executions
+  reservedConcurrency: 100,
+  
+  // Environment variables (function-specific)
+  environment: {
+    FUNCTION_SPECIFIC_VAR: "value",
+  },
+}
+```
+
+### Domain Configuration
+
+```typescript
+domain: {
+  // Domain name
+  name: "app.example.com",
+  
+  // ACM certificate ARN (must be in us-east-1)
+  certificateArn: "arn:aws:acm:us-east-1:123456789012:certificate/...",
+  
+  // Optional: Route53 hosted zone ID for DNS
+  hostedZoneId: "Z1234567890ABC",
+  
+  // Optional: Domain aliases
+  aliases: ["www.app.example.com"],
+}
+```
+
+### CloudFront Configuration
+
+```typescript
+// Price class options
+priceClass: "PriceClass_100"    // US, Canada, Europe (cheapest)
+priceClass: "PriceClass_200"    // + Asia, Middle East, Africa
+priceClass: "PriceClass_All"    // All edge locations (most expensive)
+
+// Custom cache behaviors
+cacheBehaviors: [
+  {
+    pathPattern: "/api/*",
+    targetOriginId: "lambda",
+    viewerProtocolPolicy: "https-only",
+    allowedMethods: ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
+    compress: true,
+    cachePolicyId: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad", // CachingDisabled
+  },
+]
+
+// Logging configuration
+cloudFrontLogging: {
+  bucket: "my-logs-bucket",
+  prefix: "cloudfront/",
+  includeCookies: false,
+}
+```
+
+### Tags
+
+```typescript
+tags: {
+  // Common tags
+  Environment: "production",
+  Project: "my-app",
+  Team: "frontend",
+  CostCenter: "engineering",
+  
+  // Compliance tags
+  DataClassification: "public",
+  Compliance: "SOC2",
+  
+  // Automation tags
+  ManagedBy: "pulumi",
+  AutoShutdown: "false",
+}
+```
+
+## Next.js Configuration
+
+### NextArgs Interface
+
+```typescript
+interface NextArgs {
+  // Required: Path to Next.js app
+  appPath: string;
+  
+  // Required: Path to OpenNext build output
+  openNextPath: string;
+  
+  // Enable response streaming
+  streaming?: boolean;
+  
+  // Lambda configurations
+  lambda?: {
+    // Server function (SSR/API)
+    server?: LambdaConfig;
+    
+    // Image optimization function
+    image?: ImageLambdaConfig;
+    
+    // ISR revalidation function
+    revalidation?: RevalidationLambdaConfig;
+    
+    // Cold start warmer
+    warmer?: WarmerLambdaConfig;
+  };
+  
+  // Cache configuration
+  cache?: {
+    staticCacheMaxAge?: number;  // Static asset cache (seconds)
+    serverCacheMaxAge?: number;   // SSR cache (seconds)
+  };
+  
+  // Response headers
+  responseHeaders?: Record<string, string>;
+  
+  // ISR configuration
+  isr?: {
+    tableName?: string;          // DynamoDB table name
+    queueName?: string;          // SQS queue name
+  };
+  
+  // Environment variables
+  environment?: Record<string, string>;
+  
+  // Domain configuration
+  domain?: DomainConfig;
+  
+  // CloudFront configuration
+  priceClass?: string;
+  cloudFrontLogging?: CloudFrontLoggingConfig;
+  
+  // Resource tags
+  tags?: Record<string, string>;
+}
+```
+
+### Lambda Configurations
+
+```typescript
+// Server function configuration
+interface LambdaConfig {
+  memory?: number;                    // 128-10240 MB
+  timeout?: number;                   // 1-900 seconds
+  architecture?: "x86_64" | "arm64";
+  provisionedConcurrency?: number;    // Pre-warmed instances
+  reservedConcurrency?: number;       // Max concurrent executions
+  environment?: Record<string, string>;
+}
+
+// Image optimization configuration
+interface ImageLambdaConfig extends LambdaConfig {
+  // Image-specific settings
+  formats?: string[];                 // ["webp", "avif"]
+  quality?: number;                    // 1-100
+  sizes?: number[];                    // Device sizes
+}
+
+// Revalidation configuration
+interface RevalidationLambdaConfig extends LambdaConfig {
+  // ISR-specific settings
+  maxRetries?: number;                // Retry failed revalidations
+  retryDelay?: number;                // Delay between retries (ms)
+}
+
+// Warmer configuration
+interface WarmerLambdaConfig {
+  enabled?: boolean;                   // Enable warming
+  concurrency?: number;                // Instances to keep warm
+  schedule?: string;                   // CloudWatch Events schedule
+}
+```
+
+### Example: Full Next.js Configuration
+
+```typescript
+const site = new Next("production-app", {
+  appPath: "./apps/web",
+  openNextPath: "./apps/web/.open-next",
+  streaming: true,
+  
+  lambda: {
+    server: {
+      memory: 2048,
+      timeout: 30,
+      architecture: "arm64",
+      provisionedConcurrency: 5,
+      environment: {
+        MAX_CONNECTIONS: "50",
+      },
+    },
+    image: {
+      memory: 3008,
+      timeout: 30,
+      formats: ["webp", "avif"],
+      quality: 85,
+    },
+    revalidation: {
+      memory: 1024,
+      timeout: 300,
+      maxRetries: 3,
+    },
+    warmer: {
+      enabled: true,
+      concurrency: 10,
+      schedule: "rate(5 minutes)",
+    },
+  },
+  
+  cache: {
+    staticCacheMaxAge: 31536000,  // 1 year
+    serverCacheMaxAge: 60,         // 1 minute
+  },
+  
+  responseHeaders: {
+    "Strict-Transport-Security": "max-age=63072000",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "SAMEORIGIN",
+  },
+  
+  isr: {
+    tableName: "my-app-isr-cache",
+    queueName: "my-app-revalidation-queue",
+  },
+  
+  environment: {
+    NODE_ENV: "production",
+    NEXT_PUBLIC_API_URL: "https://api.example.com",
+    DATABASE_URL: process.env.DATABASE_URL!,
+  },
+  
+  domain: {
+    name: "app.example.com",
+    certificateArn: "arn:aws:acm:us-east-1:...",
+  },
+  
+  priceClass: "PriceClass_All",
+  
+  cloudFrontLogging: {
+    bucket: "my-logs-bucket",
+    prefix: "cloudfront/production/",
+    includeCookies: false,
+  },
+  
+  tags: {
+    Environment: "production",
+    Framework: "nextjs",
+  },
+});
+```
+
+## SvelteKit Configuration
+
+### SvelteKitAwsDeploymentArgs Interface
+
+```typescript
+interface SvelteKitAwsDeploymentArgs {
+  // Required: Path to build output
+  buildPath: string;
+  
+  // Environment variables
+  environment?: Record<string, string>;
+  
+  // Lambda configuration
+  lambda?: {
+    memory?: number;
+    timeout?: number;
+    architecture?: "x86_64" | "arm64";
+  };
+  
+  // CloudFront price class
+  priceClass?: string;
+  
+  // Custom domain
+  domain?: {
+    name: string;
+    certificateArn?: string;
+  };
+  
+  // Resource tags
+  tags?: Record<string, string>;
+}
+```
+
+### Adapter Options
+
+```typescript
+// svelte.config.js
+adapter({
+  // Output directory
+  out: ".svelte-kit-aws",
+  
+  // Precompress assets
+  precompress: false,
+  
+  // Environment variable prefix
+  envPrefix: "",
+  
+  // Add Node.js polyfills
+  polyfill: true,
+  
+  // Custom esbuild options
+  esbuild: {
+    target: "node20",
+    format: "esm",
+    bundle: true,
+    splitting: false,
+  },
+})
+```
+
+### Example: Full SvelteKit Configuration
+
+```typescript
+const app = new SvelteKitAwsDeployment("sveltekit-app", {
+  buildPath: "../.svelte-kit-aws",
+  
+  environment: {
+    NODE_ENV: "production",
+    PUBLIC_API_URL: "https://api.example.com",
+    SECRET_KEY: process.env.SECRET_KEY!,
+  },
+  
+  lambda: {
+    memory: 1024,
+    timeout: 30,
+    architecture: "arm64",
+  },
+  
+  domain: {
+    name: "app.example.com",
+    certificateArn: "arn:aws:acm:us-east-1:...",
+  },
+  
+  priceClass: "PriceClass_200",
+  
+  tags: {
+    Environment: "production",
+    Framework: "sveltekit",
+  },
+});
+```
+
+## React Router Configuration
+
+### ReactRouterAwsDeploymentArgs Interface
+
+```typescript
+interface ReactRouterAwsDeploymentArgs {
+  // Required: Path to build output
+  buildPath: string;
+  
+  // Environment variables
+  environment?: Record<string, string>;
+  
+  // Lambda configuration
+  lambda?: {
+    memory?: number;
+    timeout?: number;
+    architecture?: "x86_64" | "arm64";
+  };
+  
+  // CloudFront price class
+  priceClass?: string;
+  
+  // Custom domain
+  domain?: {
+    name: string;
+    certificateArn?: string;
+  };
+  
+  // Resource tags
+  tags?: Record<string, string>;
+}
+```
+
+### Adapter Configuration
+
+```typescript
+// vite.config.ts
+import adapter from "@donswayo/pulumi-react-router-aws/adapter";
+
+reactRouter({
+  adapter: adapter({
+    // Output directory
+    out: ".react-router-aws",
+    
+    // Build configuration
+    buildEnd: async (args) => {
+      // Custom post-build logic
+      console.log("Build completed:", args);
+    },
+  }),
+})
+```
+
+### Example: Full React Router Configuration
+
+```typescript
+const app = new ReactRouterAwsDeployment("react-router-app", {
+  buildPath: "../.react-router-aws",
+  
+  environment: {
+    NODE_ENV: "production",
+    API_URL: "https://api.example.com",
+    DATABASE_URL: process.env.DATABASE_URL!,
+  },
+  
+  lambda: {
+    memory: 768,
+    timeout: 20,
+    architecture: "arm64",
+  },
+  
+  domain: {
+    name: "app.example.com",
+    certificateArn: "arn:aws:acm:us-east-1:...",
+  },
+  
+  priceClass: "PriceClass_100",
+  
+  tags: {
+    Environment: "production",
+    Framework: "react-router",
+  },
+});
+```
+
+## Nucel CLI Configuration
+
+### nucel.config.ts
+
+```typescript
+import { defineConfig } from "@donswayo/nucel-cli";
+
+export default defineConfig({
+  // Framework override (auto-detected by default)
+  framework: "nextjs", // "nextjs" | "sveltekit" | "react-router"
+  
+  // Build configuration
+  build: {
+    // Custom build command
+    command: "pnpm build:custom",
+    
+    // Build output directory
+    outputDir: ".custom-build",
+    
+    // Environment variables for build
+    env: {
+      CUSTOM_BUILD_FLAG: "true",
+    },
+  },
+  
+  // Deployment configuration
+  deploy: {
+    // AWS region
+    region: "us-east-1",
+    
+    // Stack name prefix
+    stackPrefix: "my-app",
+    
+    // Environment variables
+    environment: {
+      NODE_ENV: "production",
+    },
+    
+    // Lambda configuration
+    lambda: {
+      memory: 1024,
+      timeout: 30,
+      architecture: "arm64",
+    },
+    
+    // Domain configuration
+    domain: {
+      name: "app.example.com",
+      certificateArn: "arn:aws:acm:us-east-1:...",
+    },
+  },
+  
+  // Preview configuration
+  preview: {
+    // Enable verbose output
+    verbose: true,
+    
+    // Diff format
+    diffFormat: "table", // "table" | "json" | "yaml"
+  },
+  
+  // Hooks
+  hooks: {
+    // Before build
+    preBuild: async () => {
+      console.log("Starting build...");
+    },
+    
+    // After build
+    postBuild: async () => {
+      console.log("Build completed!");
+    },
+    
+    // Before deploy
+    preDeploy: async () => {
+      console.log("Starting deployment...");
+    },
+    
+    // After deploy
+    postDeploy: async (outputs) => {
+      console.log("Deployed to:", outputs.url);
+    },
+  },
+});
+```
+
+### Environment Files
+
+```bash
+# .env.development
+NODE_ENV=development
+API_URL=http://localhost:3001
+
+# .env.staging
+NODE_ENV=staging
+API_URL=https://staging-api.example.com
+
+# .env.production
+NODE_ENV=production
+API_URL=https://api.example.com
+```
+
+## Pulumi Configuration
+
+### Stack Configuration
+
+```yaml
+# Pulumi.production.yaml
+config:
+  aws:region: us-east-1
+  
+  my-app:environment:
+    NODE_ENV: production
+    API_URL: https://api.example.com
+  
+  my-app:lambda:
+    memory: 2048
+    timeout: 30
+  
+  my-app:domain:
+    name: app.example.com
+    certificateArn: arn:aws:acm:us-east-1:...
+```
+
+### Secrets Management
+
+```bash
+# Set secret values
+pulumi config set --secret DATABASE_URL "postgresql://..."
+pulumi config set --secret API_KEY "secret-key"
+
+# Use in code
+const dbUrl = pulumi.Config().requireSecret("DATABASE_URL");
+const apiKey = pulumi.Config().requireSecret("API_KEY");
+```
+
+## Advanced Configuration
+
+### Multi-Region Deployment
+
+```typescript
+const regions = ["us-east-1", "eu-west-1", "ap-southeast-1"];
+
+regions.forEach(region => {
+  const provider = new aws.Provider(`provider-${region}`, { region });
+  
+  new Next(`app-${region}`, {
+    appPath: "./apps/web",
+    openNextPath: ".open-next",
+    // Region-specific configuration
+  }, { provider });
+});
+```
+
+### Custom CloudFront Behaviors
+
+```typescript
+const site = new Next("app", {
+  // ... base configuration
+  
+  cloudFront: {
+    customBehaviors: [
+      {
+        pathPattern: "/api/*",
+        cachePolicyId: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+        originRequestPolicyId: "b689b0a8-53d0-40ab-baf2-68738e2966ac",
+      },
+      {
+        pathPattern: "/admin/*",
+        viewerProtocolPolicy: "https-only",
+        allowedMethods: ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"],
+      },
+    ],
+  },
+});
+```
+
+### Custom IAM Policies
+
+```typescript
+const site = new Next("app", {
+  // ... base configuration
+  
+  iam: {
+    additionalPolicies: [
+      {
+        Effect: "Allow",
+        Action: ["ses:SendEmail"],
+        Resource: "*",
+      },
+      {
+        Effect: "Allow",
+        Action: ["secretsmanager:GetSecretValue"],
+        Resource: "arn:aws:secretsmanager:*:*:secret:*",
+      },
+    ],
+  },
+});
+```
+
+## Configuration Best Practices
+
+### 1. Use Environment-Specific Files
+
+```typescript
+// config/production.ts
+export const config = {
+  lambda: { memory: 2048, timeout: 30 },
+  priceClass: "PriceClass_All",
+};
+
+// config/staging.ts
+export const config = {
+  lambda: { memory: 1024, timeout: 20 },
+  priceClass: "PriceClass_100",
+};
+```
+
+### 2. Validate Configuration
+
+```typescript
+import { z } from "zod";
+
+const configSchema = z.object({
+  appPath: z.string(),
+  openNextPath: z.string(),
+  lambda: z.object({
+    memory: z.number().min(128).max(10240),
+    timeout: z.number().min(1).max(900),
+  }).optional(),
+});
+
+const config = configSchema.parse(rawConfig);
+```
+
+### 3. Use Pulumi Config
+
+```typescript
+const config = new pulumi.Config();
+
+const site = new Next("app", {
+  environment: {
+    API_URL: config.require("apiUrl"),
+    DATABASE_URL: config.requireSecret("databaseUrl"),
+  },
+});
+```
+
+### 4. Separate Concerns
+
+```typescript
+// infrastructure/lambda.ts
+export const lambdaConfig = {
+  memory: 1024,
+  timeout: 30,
+  architecture: "arm64" as const,
+};
+
+// infrastructure/cloudfront.ts
+export const cloudFrontConfig = {
+  priceClass: "PriceClass_100",
+  cacheBehaviors: [...],
+};
+
+// index.ts
+import { lambdaConfig } from "./infrastructure/lambda";
+import { cloudFrontConfig } from "./infrastructure/cloudfront";
+
+const site = new Next("app", {
+  lambda: lambdaConfig,
+  ...cloudFrontConfig,
+});
+```
+
+## Troubleshooting Configuration
+
+### Common Issues
+
+1. **Invalid Memory Value**
+   - Must be between 128 and 10240
+   - Must be a multiple of 64
+
+2. **Certificate Not Found**
+   - Must be in us-east-1 region
+   - Must be validated
+
+3. **Environment Variable Not Set**
+   - Check spelling and case
+   - Ensure secrets are properly encrypted
+
+4. **Tag Validation Errors**
+   - Maximum 50 tags per resource
+   - Key length: 1-128 characters
+   - Value length: 0-256 characters

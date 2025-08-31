@@ -1,0 +1,356 @@
+---
+title: Configuration
+description: Complete configuration reference for Nucel deployments
+icon: SettingsIcon
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Comprehensive configuration options for customizing your Nucel deployments.
+
+## Configuration Overview
+
+Nucel provides extensive configuration options to customize every aspect of your deployment. From Lambda settings to CloudFront behaviors, you have full control over your infrastructure.
+
+<Cards>
+  <Card 
+    title="Basic Configuration" 
+    href="/docs/configuration/basic"
+    description="Essential settings for all deployments"
+  />
+  <Card 
+    title="Lambda Configuration" 
+    href="/docs/configuration/lambda"
+    description="Memory, timeout, and runtime settings"
+  />
+  <Card 
+    title="CloudFront Configuration" 
+    href="/docs/configuration/cloudfront"
+    description="CDN behaviors and cache policies"
+  />
+  <Card 
+    title="Environment Variables" 
+    href="/docs/configuration/environment"
+    description="Managing secrets and configuration"
+  />
+</Cards>
+
+## Quick Configuration
+
+<Callout type="tip">
+  Most applications work great with our default configuration. Only customize what you need!
+</Callout>
+
+### Minimal Configuration
+
+```typescript
+const site = new Next("my-app", {
+  appPath: ".",
+  openNextPath: ".open-next",
+});
+```
+
+### Common Configuration
+
+```typescript
+const site = new Next("my-app", {
+  appPath: ".",
+  openNextPath: ".open-next",
+  
+  // Environment variables
+  environment: {
+    NODE_ENV: "production",
+    API_URL: "https://api.example.com",
+  },
+  
+  // Lambda settings
+  lambda: {
+    memory: 1024,
+    timeout: 30,
+    architecture: "arm64",
+  },
+  
+  // Custom domain
+  domain: {
+    name: "app.example.com",
+    certificateArn: "arn:aws:acm:...",
+  },
+});
+```
+
+## Configuration Files
+
+### Pulumi Configuration
+
+```yaml title="Pulumi.production.yaml"
+config:
+  aws:region: us-east-1
+  
+  my-app:environment:
+    NODE_ENV: production
+    API_URL: https://api.example.com
+  
+  my-app:lambda:
+    memory: 2048
+    timeout: 30
+```
+
+### Nucel Configuration
+
+```typescript title="nucel.config.ts"
+import { defineConfig } from "@donswayo/nucel-cli";
+
+export default defineConfig({
+  framework: "nextjs",
+  
+  build: {
+    command: "pnpm build",
+    outputDir: ".open-next",
+  },
+  
+  deploy: {
+    region: "us-east-1",
+    stackPrefix: "my-app",
+    
+    stacks: {
+      production: {
+        environment: {
+          NODE_ENV: "production",
+        },
+        lambda: {
+          memory: 2048,
+        },
+      },
+    },
+  },
+});
+```
+
+## Configuration by Framework
+
+### Next.js Specific
+
+```typescript
+{
+  // ISR configuration
+  isr: {
+    tableName: "my-app-cache",
+    queueName: "my-app-revalidation",
+  },
+  
+  // Image optimization
+  lambda: {
+    image: {
+      memory: 2048,
+      formats: ["webp", "avif"],
+    },
+  },
+  
+  // Streaming
+  streaming: true,
+}
+```
+
+### SvelteKit Specific
+
+```typescript
+{
+  // Adapter options
+  adapter: {
+    out: ".svelte-kit-aws",
+    precompress: false,
+    polyfill: true,
+  },
+  
+  // Prerendering
+  prerender: {
+    entries: ["*"],
+  },
+}
+```
+
+### React Router Specific
+
+```typescript
+{
+  // Build configuration
+  adapter: {
+    out: ".react-router-aws",
+    buildEnd: async (args) => {
+      // Post-build hooks
+    },
+  },
+}
+```
+
+## Advanced Configuration
+
+### Multi-Region Setup
+
+```typescript
+const regions = ['us-east-1', 'eu-west-1', 'ap-southeast-1'];
+
+regions.forEach(region => {
+  const provider = new aws.Provider(`provider-${region}`, { region });
+  
+  new Next(`app-${region}`, {
+    // Configuration
+  }, { provider });
+});
+```
+
+### Custom IAM Policies
+
+```typescript
+{
+  iam: {
+    additionalPolicies: [
+      {
+        Effect: "Allow",
+        Action: ["ses:SendEmail"],
+        Resource: "*",
+      },
+    ],
+  },
+}
+```
+
+### VPC Configuration
+
+```typescript
+{
+  lambda: {
+    vpc: {
+      subnetIds: ["subnet-xxx", "subnet-yyy"],
+      securityGroupIds: ["sg-xxx"],
+    },
+  },
+}
+```
+
+## Environment Variables
+
+### Loading Priority
+
+1. System environment variables
+2. `.env` file
+3. `.env.local` file
+4. `.env.[stack]` file
+5. `.env.[stack].local` file
+6. Configuration overrides
+
+### Client vs Server Variables
+
+```typescript
+// Next.js
+NEXT_PUBLIC_API_URL  // Client-side
+API_KEY              // Server-side only
+
+// SvelteKit
+PUBLIC_API_URL       // Client-side
+SECRET_KEY           // Server-side only
+
+// React Router
+VITE_API_URL         // Client-side
+DATABASE_URL         // Server-side only
+```
+
+## Performance Tuning
+
+### Lambda Optimization
+
+| Memory (MB) | vCPU | Use Case |
+|------------|------|----------|
+| 512 | 0.5 | Simple SSR |
+| 1024 | 1.0 | Standard apps |
+| 2048 | 2.0 | Complex apps |
+| 3008 | 3.0 | Image processing |
+
+### CloudFront Caching
+
+```typescript
+{
+  cache: {
+    staticCacheMaxAge: 31536000,  // 1 year
+    serverCacheMaxAge: 60,         // 1 minute
+    apiCacheMaxAge: 0,             // No cache
+  },
+}
+```
+
+## Security Configuration
+
+### Headers
+
+```typescript
+{
+  responseHeaders: {
+    "Strict-Transport-Security": "max-age=63072000",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+  },
+}
+```
+
+### WAF Rules
+
+```typescript
+{
+  waf: {
+    enabled: true,
+    rules: ["RateLimitRule", "SqlInjectionRule"],
+  },
+}
+```
+
+## Validation
+
+<Callout type="warning">
+  Always validate your configuration before deploying to production!
+</Callout>
+
+### Schema Validation
+
+```typescript
+import { z } from "zod";
+
+const configSchema = z.object({
+  appPath: z.string(),
+  lambda: z.object({
+    memory: z.number().min(128).max(10240),
+    timeout: z.number().min(1).max(900),
+  }).optional(),
+});
+
+const config = configSchema.parse(rawConfig);
+```
+
+### Preview Deployment
+
+```bash
+# Preview changes before applying
+nucel deploy --preview
+```
+
+## What's Next?
+
+<Cards>
+  <Card 
+    title="Basic Configuration" 
+    href="/docs/configuration/basic"
+    description="Start with essential settings"
+  />
+  <Card 
+    title="Framework Config" 
+    href="/docs/configuration/frameworks"
+    description="Framework-specific options"
+  />
+  <Card 
+    title="API Reference" 
+    href="/docs/configuration/api"
+    description="Complete configuration API"
+  />
+</Cards>
