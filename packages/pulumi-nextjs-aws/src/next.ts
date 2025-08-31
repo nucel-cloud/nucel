@@ -175,6 +175,8 @@ export class Next extends pulumi.ComponentResource {
       logging: args.cloudFrontLogging,
       waitForDeployment,
       tags,
+      useSharedPolicies: args.useSharedPolicies,
+      customResponseHeadersPolicyId: args.customResponseHeadersPolicyId,
     }, defaultOptions);
 
 

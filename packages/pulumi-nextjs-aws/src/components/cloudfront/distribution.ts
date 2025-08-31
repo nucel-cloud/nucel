@@ -20,6 +20,7 @@ export type CloudFrontArgs = {
   security?: CloudFrontSecurityConfig;
   alarmEmail?: string;
   useSharedPolicies?: boolean;
+  customResponseHeadersPolicyId?: pulumi.Input<string>;
 };
 
 export type CloudFrontOutputs = {
@@ -49,6 +50,7 @@ export function createCloudFrontDistribution(
     security,
     alarmEmail,
     useSharedPolicies = true,
+    customResponseHeadersPolicyId,
   } = args;
 
   // Origin Access Control or Identity based on security config
@@ -67,7 +69,12 @@ export function createCloudFrontDistribution(
 
   // Policies and Functions (with shared policies support)
   const policies = createCachePolicies(name, { ...opts, useSharedPolicies });
-  const responseHeadersPolicy = createResponseHeadersPolicy(name, opts);
+  
+  // Use custom response headers policy if provided, otherwise create/use shared one
+  const responseHeadersPolicyId = customResponseHeadersPolicyId 
+    ? customResponseHeadersPolicyId
+    : createResponseHeadersPolicy(name, opts).apply(p => p.id!);
+  
   const viewerRequestFunction = createViewerRequestFunction(name, opts);
 
   // Build origins
@@ -170,7 +177,7 @@ export function createCloudFrontDistribution(
       compress: true,
       cachePolicyId: policies.serverCachePolicy,
       originRequestPolicyId: policies.serverOriginRequestPolicy,
-      responseHeadersPolicyId: responseHeadersPolicy.id,
+      responseHeadersPolicyId: responseHeadersPolicyId as pulumi.Input<string>,
       functionAssociations: [{
         eventType: "viewer-request",
         functionArn: viewerRequestFunction.arn,
@@ -185,7 +192,7 @@ export function createCloudFrontDistribution(
       compress: true,
       cachePolicyId: policies.serverCachePolicy,
       originRequestPolicyId: policies.serverOriginRequestPolicy,
-      responseHeadersPolicyId: responseHeadersPolicy.id,
+      responseHeadersPolicyId: responseHeadersPolicyId as pulumi.Input<string>,
       functionAssociations: [{
         eventType: "viewer-request",
         functionArn: viewerRequestFunction.arn,
@@ -229,7 +236,7 @@ export function createCloudFrontDistribution(
       compress: true,
       cachePolicyId: policies.serverCachePolicy,
       originRequestPolicyId: policies.serverOriginRequestPolicy,
-      responseHeadersPolicyId: responseHeadersPolicy.id,
+      responseHeadersPolicyId: responseHeadersPolicyId as pulumi.Input<string>,
       functionAssociations: [{
         eventType: "viewer-request",
         functionArn: viewerRequestFunction.arn,

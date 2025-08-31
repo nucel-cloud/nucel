@@ -107,6 +107,13 @@ export type NextArgs = {
   useSharedPolicies?: boolean;
   
   /**
+   * Custom CloudFront response headers policy ID.
+   * If provided, this will be used instead of creating a new one.
+   * Useful when you need specific security headers like custom X-Frame-Options.
+   */
+  customResponseHeadersPolicyId?: pulumi.Input<string>;
+  
+  /**
    * CloudFront security configuration
    */
   security?: CloudFrontSecurityConfig;
