@@ -18,6 +18,8 @@ program
   .description('Deploy your application')
   .option('-s, --stack <stack>', 'Stack name', 'dev')
   .option('--preview', 'Preview changes without deploying')
+  .option('--build', 'Force build even if output exists')
+  .option('--skip-build', 'Skip build step')
   .action(async (options, command) => {
     try {
       const parentOpts = command.parent?.opts() || {};
@@ -27,6 +29,8 @@ program
         preview: options.preview || false,
         verbose: parentOpts.verbose || parentOpts.debug || false,
         debug: parentOpts.debug || false,
+        build: options.build || false,
+        skipBuild: options.skipBuild || false,
       });
     } catch (error) {
       handleError(error);
