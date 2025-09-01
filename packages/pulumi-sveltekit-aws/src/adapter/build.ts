@@ -7,7 +7,7 @@ import type { BuildOptions } from '../types/index.js';
 
 export async function build({
   builder,
-  out = '.svelte-kit-aws',
+  out = '.nucel-build',
   precompress = false,
   envPrefix = '',
 }: BuildOptions) {
@@ -77,7 +77,7 @@ export async function build({
   const metadata = {
     version: 1,
     timestamp: new Date().toISOString(),
-    builder: '@repo/pulumi-sveltekit-aws',
+    builder: '@nucel/sveltekit-aws',
     routes: builder.routes.map(route => ({
       id: route.id,
       type: route.page.methods.length > 0 ? 'page' : route.api.methods.length > 0 ? 'api' : 'unknown',

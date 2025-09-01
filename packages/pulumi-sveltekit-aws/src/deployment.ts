@@ -1,23 +1,23 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as path from "path";
 import { existsSync } from "fs";
-import type { SvelteKitAwsDeploymentArgs } from "./types/index.js";
+import type { SvelteKitNucelAwsArgs } from "./types/index.js";
 import { createS3Bucket, uploadStaticAssets } from "./components/s3.js";
 import { createServerRole } from "./components/iam.js";
 import { createServerFunction } from "./components/lambda.js";
 import { createCloudFrontDistribution } from "./components/cloudfront.js";
 
-export class SvelteKitAwsDeployment extends pulumi.ComponentResource {
+export class SvelteKitNucelAws extends pulumi.ComponentResource {
   public readonly url: pulumi.Output<string>;
   public readonly distributionId: pulumi.Output<string>;
   public readonly bucketName: pulumi.Output<string>;
   
   constructor(
     name: string,
-    args: SvelteKitAwsDeploymentArgs,
+    args: SvelteKitNucelAwsArgs,
     opts?: pulumi.ComponentResourceOptions
   ) {
-    super("pulumi-sveltekit-aws:index:SvelteKitAwsDeployment", name, {}, opts);
+    super("nucel:sveltekit-aws", name, {}, opts);
     
     const defaultOptions = { parent: this };
     

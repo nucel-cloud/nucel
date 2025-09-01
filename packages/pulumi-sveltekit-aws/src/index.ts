@@ -1,8 +1,8 @@
-export { SvelteKitAwsDeployment } from "./deployment.js";
+export { SvelteKitNucelAws } from "./deployment.js";
 
-export type { 
-  SvelteKitAwsDeploymentArgs,
-  AdapterOptions,
+export type {
+  SvelteKitNucelAwsArgs,
+  SvelteKitNucelAwsAdapterOptions,
 } from "./types/index.js";
 
 export * from "./components/s3.js";

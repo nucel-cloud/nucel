@@ -1,10 +1,10 @@
 import type { Builder } from '@sveltejs/kit';
 import * as pulumi from "@pulumi/pulumi";
 
-export interface AdapterOptions {
+export interface SvelteKitNucelAwsAdapterOptions {
   /**
    * Output directory for the build
-   * @default '.svelte-kit-aws'
+   * @default '.nucel-build'
    */
   out?: string;
   
@@ -27,11 +27,11 @@ export interface AdapterOptions {
   polyfill?: boolean;
 }
 
-export interface BuildOptions extends AdapterOptions {
+export interface BuildOptions extends SvelteKitNucelAwsAdapterOptions {
   builder: Builder;
 }
 
-export interface SvelteKitAwsDeploymentArgs {
+export interface SvelteKitNucelAwsArgs {
   /**
    * Path to the SvelteKit build output
    */

@@ -30,7 +30,7 @@ import adapter from '@donswayo/pulumi-sveltekit-aws/adapter';
 const config = {
   kit: {
     adapter: adapter({
-      out: '.svelte-kit-aws',
+      out: '.nucel-build',
       precompress: false,
       polyfill: true,
     })
@@ -46,7 +46,7 @@ export default config;
 pnpm build
 ```
 
-This will create a `.svelte-kit-aws` directory with:
+This will create a `.nucel-build` directory with:
 - `server/` - Lambda function code
 - `static/` - Static assets
 - `prerendered/` - Prerendered pages
@@ -58,10 +58,10 @@ Create a Pulumi program:
 
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
-import { SvelteKitAwsDeployment } from "@repo/pulumi-sveltekit-aws";
+import { SvelteKitNucelAws } from "@donswayo/pulumi-sveltekit-aws";
 
-const app = new SvelteKitAwsDeployment("my-sveltekit-app", {
-  buildPath: "./apps/web/.svelte-kit-aws",
+const app = new SvelteKitNucelAws("my-sveltekit-app", {
+  buildPath: "./apps/web/.nucel-build",
   
   environment: {
     NODE_ENV: "production",
@@ -103,7 +103,7 @@ pulumi up
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `out` | `string` | `.svelte-kit-aws` | Output directory for build |
+| `out` | `string` | `.nucel-build` | Output directory for build |
 | `precompress` | `boolean` | `false` | Precompress static assets |
 | `envPrefix` | `string` | `""` | Environment variable prefix filter |
 | `polyfill` | `boolean` | `true` | Add Node.js polyfills |
@@ -144,7 +144,7 @@ import {
   createS3Bucket,
   createServerFunction,
   createCloudFrontDistribution,
-} from "@repo/pulumi-sveltekit-aws";
+} from "@donswayo/pulumi-sveltekit-aws";
 
 // Custom deployment logic
 ```

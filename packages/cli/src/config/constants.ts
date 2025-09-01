@@ -1,12 +1,15 @@
 export const CONSTANTS = {
   PULUMI_CONFIG_PASSPHRASE: 'nucel-local-passphrase',
   AWS_PULUMI_PLUGIN_VERSION: 'v7.0.0',
-  
+
   DEFAULT_AWS_REGION: 'us-east-1',
-  
+
+  // S3 bucket for storing Pulumi state (prefix with project name for uniqueness)
+  PULUMI_STATE_BUCKET_PREFIX: 'nucel-pulumi-state',
+
   FRAMEWORK_OUTPUT_DIRECTORIES: {
     nextjs: '.open-next',
-    sveltekit: '.svelte-kit-aws', 
+    sveltekit: '.svelte-kit-aws',
     'react-router': '.nucel-build', // Nucel adapter output directory
   } as const,
   
