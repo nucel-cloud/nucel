@@ -17,12 +17,38 @@ export async function initializePulumiStack(
 
 export async function refreshStack(pulumiStack: any): Promise<void> {
   const refreshSpinner = ora('Refreshing stack state...').start();
-  await pulumiStack.refresh({ 
-    onOutput: (msg: string) => {
-      if (process.env.DEBUG) console.log(msg);
+  try {
+    await pulumiStack.refresh({ 
+      onOutput: (msg: string) => {
+        if (process.env.DEBUG) console.log(msg);
+      }
+    });
+    refreshSpinner.succeed('Stack refreshed');
+  } catch (error: any) {
+    // Handle locked stack error
+    if (error.message?.includes('the stack is currently locked')) {
+      refreshSpinner.text = 'Stack is locked, attempting to unlock...';
+      try {
+        // Cancel any locked operations
+        await pulumiStack.cancel();
+        refreshSpinner.text = 'Stack unlocked, retrying refresh...';
+        
+        // Retry the refresh
+        await pulumiStack.refresh({ 
+          onOutput: (msg: string) => {
+            if (process.env.DEBUG) console.log(msg);
+          }
+        });
+        refreshSpinner.succeed('Stack refreshed');
+      } catch (cancelError) {
+        refreshSpinner.fail('Failed to unlock stack');
+        throw new Error('Stack is locked by another operation. Please try again in a moment.');
+      }
+    } else {
+      refreshSpinner.fail('Stack refresh failed');
+      throw error;
     }
-  });
-  refreshSpinner.succeed('Stack refreshed');
+  }
 }
 
 export function displayPreviewResults(previewRes: any): void {

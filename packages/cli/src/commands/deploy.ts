@@ -1,13 +1,17 @@
 import { InlineProgramArgs, LocalWorkspace } from "@pulumi/pulumi/automation/index.js";
 import chalk from 'chalk';
 import ora from 'ora';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import { buildProject } from '../utils/build.js';
 import { createNextJsProgram } from '../programs/nextjs.js';
 import { createSvelteKitProgram } from '../programs/sveltekit.js';
 import { createReactRouterProgram } from '../programs/react-router.js';
 import { loadConfig } from '../config/loader.js';
+import type { ProjectConfig } from '../config/types.js';
 import { initializePulumiStack, refreshStack, displayPreviewResults, displayDeploymentResults } from '../utils/deployment.js';
 import { CONSTANTS } from '../config/constants.js';
+import { getFrameworkConfig } from '../config/framework-configs.js';
 
 export interface DeployOptions {
   stack: string;
@@ -108,7 +112,28 @@ export async function deploy(options: DeployOptions) {
 
     const region = config.aws.region || process.env.AWS_REGION || CONSTANTS.DEFAULT_AWS_REGION;
     await initializePulumiStack(pulumiStack, region);
-    await refreshStack(pulumiStack);
+    
+    // Refresh stack with automatic lock handling
+    try {
+      await refreshStack(pulumiStack);
+    } catch (error: any) {
+      if (error.message?.includes('locked')) {
+        console.log(chalk.yellow('\n⚠️  Stack appears to be locked from a previous operation'));
+        console.log(chalk.gray('   Attempting automatic recovery...\n'));
+        
+        // Try to cancel and continue
+        try {
+          await pulumiStack.cancel();
+          console.log(chalk.green('✓ Previous operation cancelled'));
+          await refreshStack(pulumiStack);
+        } catch (cancelError) {
+          // If cancel fails, still try to continue
+          console.log(chalk.yellow('   Could not cancel previous operation, continuing anyway...'));
+        }
+      } else {
+        throw error;
+      }
+    }
 
     if (preview) {
       const previewSpinner = ora('Generating preview...').start();
@@ -132,17 +157,70 @@ export async function deploy(options: DeployOptions) {
       destroySpinner.succeed('Infrastructure destroyed');
       console.log(chalk.green('\n✅ Stack destroyed successfully\n'));
     } else {
-      const deploySpinner = verbose || debug ? null : ora('Deploying to AWS...').start();
+      let deploySpinner = verbose || debug ? null : ora('Initializing deployment...').start();
       if (verbose || debug) {
         console.log(chalk.cyan('\nDeploying to AWS...\n'));
       }
-      const upRes = await pulumiStack.up({ 
-        onOutput: (msg: string) => {
-          if (verbose || debug) {
-            console.log(chalk.gray(msg));
+      
+      let lastResourceType = '';
+      let upRes;
+      
+      try {
+        upRes = await pulumiStack.up({ 
+          onOutput: (msg: string) => {
+            if (verbose || debug) {
+              console.log(chalk.gray(msg));
+            } else if (deploySpinner) {
+              // Parse Pulumi output to show user-friendly progress
+              const progressMessage = parseDeploymentProgress(msg);
+              if (progressMessage && progressMessage !== lastResourceType) {
+                deploySpinner.text = progressMessage;
+                lastResourceType = progressMessage;
+              }
+            }
+          },
+          onEvent: (event: any) => {
+            if (!verbose && !debug && deploySpinner && event.type === 'resource-pre-create') {
+              const message = getResourceProgressMessage(event.metadata?.type, event.metadata?.name);
+              if (message) {
+                deploySpinner.text = message;
+              }
+            }
           }
+        });
+      } catch (deployError: any) {
+        // Handle locked stack during deployment
+        if (deployError.message?.includes('the stack is currently locked')) {
+          if (deploySpinner) {
+            deploySpinner.text = 'Stack is locked, attempting to recover...';
+          } else {
+            console.log(chalk.yellow('\n⚠️  Stack is locked, attempting to recover...'));
+          }
+          
+          try {
+            await pulumiStack.cancel();
+            if (deploySpinner) {
+              deploySpinner.text = 'Retrying deployment...';
+            } else {
+              console.log(chalk.green('✓ Lock cleared, retrying...'));
+            }
+            
+            // Retry the deployment
+            upRes = await pulumiStack.up({ 
+              onOutput: (msg: string) => {
+                if (verbose || debug) {
+                  console.log(chalk.gray(msg));
+                }
+              }
+            });
+          } catch (retryError) {
+            throw new Error('Stack is locked. Please try again in a moment.');
+          }
+        } else {
+          throw deployError;
         }
-      });
+      }
+      
       if (deploySpinner) deploySpinner.succeed('Deployment completed');
 
       displayDeploymentResults(upRes);
@@ -156,4 +234,113 @@ export async function deploy(options: DeployOptions) {
     stackSpinner.fail('Deployment failed');
     throw error;
   }
+}
+
+async function shouldRunBuild(config: ProjectConfig, options: DeployOptions): Promise<boolean> {
+  // If user explicitly wants to skip build
+  if (options.skipBuild) {
+    return false;
+  }
+  
+  // If user explicitly wants to build
+  if (options.build) {
+    return true;
+  }
+  
+  // Auto-detect: Check if output directory already exists
+  const frameworkConfig = getFrameworkConfig(config.framework);
+  const outputDir = join(process.cwd(), frameworkConfig.outputDirectory);
+  
+  // If output directory exists, assume it's already built
+  if (existsSync(outputDir)) {
+    if (options.verbose || options.debug) {
+      console.log(chalk.gray(`Found existing build output at ${outputDir}`));
+    }
+    return false;
+  }
+  
+  // Default: build is needed
+  return true;
+}
+
+async function getInternalBuildCommand(config: ProjectConfig): Promise<string> {
+  // If user provided a custom build command, use it
+  if (config.buildCommand && config.buildCommand !== 'npm run build') {
+    return config.buildCommand;
+  }
+  
+  // Use Nucel's internal build process for each framework
+  switch (config.framework) {
+    case 'nextjs':
+      // OpenNext handles the build internally
+      return 'npx open-next@latest build';
+      
+    case 'sveltekit':
+      // Use the Nucel SvelteKit adapter build
+      return 'npm run build';
+      
+    case 'react-router':
+      // Use the Nucel React Router adapter build
+      return 'npm run build';
+      
+    default:
+      // Fallback to standard build
+      return config.buildCommand || 'npm run build';
+  }
+}
+
+function parseDeploymentProgress(output: string): string | null {
+  // Parse Pulumi output to show user-friendly messages
+  if (output.includes('aws:s3:Bucket')) {
+    return '📦 Creating storage bucket...';
+  }
+  if (output.includes('aws:s3:BucketObject')) {
+    return '⬆️  Uploading static assets...';
+  }
+  if (output.includes('aws:lambda:Function')) {
+    return '⚡ Creating Lambda function...';
+  }
+  if (output.includes('aws:lambda:FunctionUrl')) {
+    return '🔗 Configuring function URL...';
+  }
+  if (output.includes('aws:cloudfront:Distribution')) {
+    return '🌐 Setting up CloudFront CDN...';
+  }
+  if (output.includes('aws:cloudfront:OriginAccessIdentity')) {
+    return '🔐 Configuring CDN access...';
+  }
+  if (output.includes('aws:iam:Role')) {
+    return '👤 Setting up IAM permissions...';
+  }
+  if (output.includes('aws:dynamodb:Table')) {
+    return '💾 Creating DynamoDB table...';
+  }
+  if (output.includes('aws:sqs:Queue')) {
+    return '📨 Setting up message queue...';
+  }
+  if (output.includes('updating') || output.includes('creating')) {
+    return '🔄 Updating resources...';
+  }
+  return null;
+}
+
+function getResourceProgressMessage(type: string, name: string): string | null {
+  if (!type) return null;
+  
+  const typeMap: Record<string, string> = {
+    'aws:s3:Bucket': '📦 Creating storage bucket',
+    'aws:s3:BucketObject': '⬆️  Uploading assets',
+    'aws:lambda:Function': '⚡ Deploying Lambda function',
+    'aws:lambda:FunctionUrl': '🔗 Configuring function URL',
+    'aws:cloudfront:Distribution': '🌐 Setting up CloudFront CDN',
+    'aws:cloudfront:OriginAccessIdentity': '🔐 Setting up CDN access',
+    'aws:iam:Role': '👤 Configuring IAM permissions',
+    'aws:iam:RolePolicyAttachment': '📝 Attaching policies',
+    'aws:dynamodb:Table': '💾 Creating database table',
+    'aws:sqs:Queue': '📨 Creating message queue',
+    'aws:s3:BucketPolicy': '🔒 Setting bucket permissions',
+    'aws:lambda:Permission': '✅ Granting Lambda permissions',
+  };
+  
+  return typeMap[type] || null;
 }
