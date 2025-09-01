@@ -8,16 +8,13 @@ const adapter = reactRouterAwsAdapter({
 });
 
 export default {
-  // Server-side render by default, to enable SPA mode set this to `false`
   ssr: true,
-  
   // Build configuration
   buildDirectory: "build",
   serverBuildFile: "index.js",
   
-  // Run the adapter after build completes
-  async buildEnd({ buildManifest, serverBuildPath }) {
-    console.log('Running AWS adapter...');
+  async buildEnd({ buildManifest }) {
+    console.log('Running Nucel adapter...');
     await adapter.build({
       serverBuildFile: 'build/server/index.js',
       buildDirectory: 'build/client',
