@@ -80,8 +80,16 @@ export default function reactRouterAwsAdapter(options: ReactRouterAwsAdapterOpti
         if (stats.isFile()) {
           // Copy single file as index.js
           cpSync(serverBuildPath, join(serverDir, 'index.js'));
+          
+          // Also copy assets from the same directory if they exist
+          const serverBuildDir = dirname(serverBuildPath);
+          const assetsPath = join(serverBuildDir, 'assets');
+          if (existsSync(assetsPath)) {
+            console.log('📦 Copying server assets...');
+            cpSync(assetsPath, join(serverDir, 'assets'), { recursive: true });
+          }
         } else {
-          // Copy entire directory
+          // Copy entire directory contents
           cpSync(serverBuildPath, serverDir, { recursive: true });
         }
       }
