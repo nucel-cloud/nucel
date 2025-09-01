@@ -74,7 +74,7 @@ export class ReactRouterAwsDeployment extends pulumi.ComponentResource {
     }
     
     // Create S3 bucket for static assets
-    const assetsBucket = new aws.s3.BucketV2(`${name}-assets`, {
+    const assetsBucket = new aws.s3.Bucket(`${name}-assets`, {
       forceDestroy: true,
       tags,
     }, { parent: this });
@@ -94,13 +94,13 @@ export class ReactRouterAwsDeployment extends pulumi.ComponentResource {
       dot: true,
     });
     
-    const s3Objects: aws.s3.BucketObjectv2[] = [];
+    const s3Objects: aws.s3.BucketObject[] = [];
     
     for (const file of clientFiles) {
       const filePath = join(clientPath, file);
       const contentType = mime.lookup(file) || 'application/octet-stream';
       
-      const s3Object = new aws.s3.BucketObjectv2(`${name}-asset-${file.replace(/[^a-zA-Z0-9]/g, '-')}`, {
+      const s3Object = new aws.s3.BucketObject(`${name}-asset-${file.replace(/[^a-zA-Z0-9]/g, '-')}`, {
         bucket: assetsBucket.id,
         key: file,
         source: new pulumi.asset.FileAsset(filePath),
@@ -159,6 +159,40 @@ export class ReactRouterAwsDeployment extends pulumi.ComponentResource {
     
     const lambdaCode = pulumi.output(createLambdaZip());
     
+    // Validate and filter environment variables
+    const validEnvVars: Record<string, string> = { NODE_ENV: 'production' };
+    const envVarPattern = /^[a-zA-Z][a-zA-Z0-9_]+$/;
+    
+    // AWS Lambda reserved environment variable prefixes
+    const reservedPrefixes = [
+      'AWS_',
+      'LAMBDA_',
+      '_HANDLER',
+      '_X_AMZN_'
+    ];
+    
+    for (const [key, value] of Object.entries(environment)) {
+      // Skip AWS reserved environment variables
+      if (reservedPrefixes.some(prefix => key.startsWith(prefix))) {
+        // Only log in debug mode
+        if (process.env.PULUMI_VERBOSE || process.env.DEBUG) {
+          console.warn(`Skipping reserved AWS environment variable: ${key}`);
+        }
+        continue;
+      }
+      
+      // Validate variable name pattern
+      if (!envVarPattern.test(key)) {
+        // Only log in debug mode
+        if (process.env.PULUMI_VERBOSE || process.env.DEBUG) {
+          console.warn(`Skipping invalid environment variable: ${key}`);
+        }
+        continue;
+      }
+      
+      validEnvVars[key] = value;
+    }
+    
     // Create Lambda function
     const lambdaFunction = new aws.lambda.Function(`${name}-function`, {
       runtime: 'nodejs20.x',
@@ -169,10 +203,7 @@ export class ReactRouterAwsDeployment extends pulumi.ComponentResource {
       timeout: lambda.timeout || 30,
       architectures: [lambda.architecture || 'arm64'],
       environment: {
-        variables: {
-          NODE_ENV: 'production',
-          ...environment,
-        },
+        variables: validEnvVars,
       },
       tags,
     }, { parent: this });
