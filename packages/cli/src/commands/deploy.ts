@@ -13,10 +13,25 @@ export interface DeployOptions {
   stack: string;
   destroy?: boolean;
   preview?: boolean;
+  verbose?: boolean;
+  debug?: boolean;
+  build?: boolean;
+  skipBuild?: boolean;
 }
 
 export async function deploy(options: DeployOptions) {
-  const { stack, destroy, preview } = options;
+  const { stack, destroy, preview, verbose, debug } = options;
+  
+  // Set environment variables for Pulumi debug output
+  if (debug) {
+    process.env.PULUMI_DEBUG_COMMANDS = '1';
+    process.env.PULUMI_VERBOSE = '7';
+    process.env.DEBUG = '*';
+    console.log(chalk.yellow('Debug mode enabled\n'));
+  } else if (verbose) {
+    process.env.PULUMI_VERBOSE = '3';
+    console.log(chalk.yellow('Verbose mode enabled\n'));
+  }
   
   const configSpinner = ora('Loading configuration...').start();
   const config = await loadConfig();
@@ -32,13 +47,32 @@ export async function deploy(options: DeployOptions) {
   console.log();
 
   if (!destroy) {
-    const buildSpinner = ora('Building application...').start();
-    try {
-      await buildProject(config.buildCommand);
-      buildSpinner.succeed('Build completed');
-    } catch (error) {
-      buildSpinner.fail('Build failed');
-      throw error;
+    // Check if we should build
+    const shouldBuild = await shouldRunBuild(config, options);
+    
+    if (shouldBuild) {
+      const buildSpinner = ora('Building application...').start();
+      try {
+        // Use internal build process for each framework
+        const buildCommand = await getInternalBuildCommand(config);
+        
+        if (verbose || debug) {
+          buildSpinner.text = `Running: ${buildCommand}`;
+          console.log(chalk.gray(`\nUsing Nucel internal build process for ${config.framework}`));
+        }
+        
+        await buildProject(buildCommand, { verbose: verbose || debug });
+        buildSpinner.succeed('Build completed');
+      } catch (error) {
+        buildSpinner.fail('Build failed');
+        if (debug && error instanceof Error) {
+          console.error(chalk.red('\nBuild error details:'));
+          console.error(error.stack);
+        }
+        throw error;
+      }
+    } else {
+      console.log(chalk.gray('Skipping build (output directory already exists)'));
     }
   }
 
@@ -98,13 +132,18 @@ export async function deploy(options: DeployOptions) {
       destroySpinner.succeed('Infrastructure destroyed');
       console.log(chalk.green('\n✅ Stack destroyed successfully\n'));
     } else {
-      const deploySpinner = ora('Deploying to AWS...').start();
+      const deploySpinner = verbose || debug ? null : ora('Deploying to AWS...').start();
+      if (verbose || debug) {
+        console.log(chalk.cyan('\nDeploying to AWS...\n'));
+      }
       const upRes = await pulumiStack.up({ 
         onOutput: (msg: string) => {
-          if (process.env.DEBUG) console.log(msg);
+          if (verbose || debug) {
+            console.log(chalk.gray(msg));
+          }
         }
       });
-      deploySpinner.succeed('Deployment completed');
+      if (deploySpinner) deploySpinner.succeed('Deployment completed');
 
       displayDeploymentResults(upRes);
 

@@ -13,22 +13,22 @@ export interface FrameworkConfig {
 
 export const FRAMEWORK_CONFIGS: Record<Framework, FrameworkConfig> = {
   nextjs: {
-    buildCommand: 'next build',
+    buildCommand: 'npm run build',
     outputDirectory: '.next',
     envPrefixes: ['NEXT_PUBLIC_'],
     configFiles: ['next.config.js', 'next.config.mjs', 'next.config.ts'],
     dependencies: ['next'],
   },
   sveltekit: {
-    buildCommand: 'vite build',
+    buildCommand: 'npm run build',
     outputDirectory: '.svelte-kit',
     envPrefixes: ['PUBLIC_', 'VITE_'],
     configFiles: ['svelte.config.js', 'vite.config.js', 'vite.config.ts'],
     dependencies: ['@sveltejs/kit'],
   },
   'react-router': {
-    buildCommand: 'react-router build',
-    outputDirectory: 'build',
+    buildCommand: 'npm run build',
+    outputDirectory: '.react-router-aws',
     envPrefixes: ['VITE_'],
     configFiles: ['react-router.config.ts', 'react-router.config.js'],
     dependencies: ['react-router', '@react-router/dev'],
