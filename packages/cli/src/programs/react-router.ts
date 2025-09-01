@@ -3,6 +3,8 @@ import { ReactRouterAwsDeployment } from "@donswayo/pulumi-react-router-aws";
 import { ProjectConfig } from '../config/types.js';
 import { CONSTANTS } from '../config/constants.js';
 import * as path from 'path';
+import * as fs from 'fs';
+import chalk from 'chalk';
 
 export function createReactRouterProgram(config: ProjectConfig) {
   return async () => {
@@ -10,7 +12,39 @@ export function createReactRouterProgram(config: ProjectConfig) {
     
     const projectName = config.name.replace(/[^a-zA-Z0-9-]/g, '-');
     
-    const buildPath = path.join(projectRoot, config.outputDirectory || 'build/server');
+    // Check for React Router adapter output first, then fallback to standard build
+    const possiblePaths = [
+      path.join(projectRoot, '.react-router-aws'), // Adapter output
+      path.join(projectRoot, 'react-router'),       // Alternative adapter output
+      path.join(projectRoot, config.outputDirectory || 'build'), // Standard build
+    ];
+    
+    let buildPath: string | null = null;
+    for (const possiblePath of possiblePaths) {
+      const serverPath = path.join(possiblePath, 'server');
+      const clientPath = path.join(possiblePath, 'client');
+      
+      if (fs.existsSync(serverPath) && fs.existsSync(clientPath)) {
+        buildPath = possiblePath;
+        console.log(chalk.gray(`Using React Router build at: ${path.relative(projectRoot, buildPath)}`));
+        
+        // Check if handler.js exists (required for Lambda)
+        const handlerPath = path.join(serverPath, 'handler.js');
+        if (!fs.existsSync(handlerPath)) {
+          console.warn(chalk.yellow('⚠️  Warning: handler.js not found in server directory'));
+          console.warn(chalk.yellow('   Make sure the React Router AWS adapter is properly configured'));
+        }
+        break;
+      }
+    }
+    
+    if (!buildPath) {
+      throw new Error(
+        `React Router build not found. Checked:\n` +
+        possiblePaths.map(p => `  - ${path.relative(projectRoot, p)}`).join('\n') +
+        `\n\nMake sure to build your app with the React Router AWS adapter or run 'npm run build' first.`
+      );
+    }
     
     const deployment = new ReactRouterAwsDeployment(`${projectName}-deployment`, {
       buildPath,
