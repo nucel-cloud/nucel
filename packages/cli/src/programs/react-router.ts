@@ -1,5 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
-import { ReactRouterAwsDeployment } from "@donswayo/pulumi-react-router-aws";
+import { ReactRouterNucelAws } from "@donswayo/pulumi-react-router-aws";
 import { ProjectConfig } from '../config/types.js';
 import { CONSTANTS } from '../config/constants.js';
 import * as path from 'path';
@@ -14,8 +14,8 @@ export function createReactRouterProgram(config: ProjectConfig) {
     
     // Check for React Router adapter output first, then fallback to standard build
     const possiblePaths = [
-      path.join(projectRoot, '.react-router-aws'), // Adapter output
-      path.join(projectRoot, 'react-router'),       // Alternative adapter output
+      path.join(projectRoot, '.nucel-build'),        // Nucel adapter output
+      path.join(projectRoot, '.react-router-aws'),   // Legacy adapter output
       path.join(projectRoot, config.outputDirectory || 'build'), // Standard build
     ];
     
@@ -46,7 +46,7 @@ export function createReactRouterProgram(config: ProjectConfig) {
       );
     }
     
-    const deployment = new ReactRouterAwsDeployment(`${projectName}-deployment`, {
+    const deployment = new ReactRouterNucelAws(`${projectName}-deployment`, {
       buildPath,
       environment: config.environment,
       domain: config.domains?.[0] ? {

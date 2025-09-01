@@ -7,7 +7,7 @@ export const CONSTANTS = {
   FRAMEWORK_OUTPUT_DIRECTORIES: {
     nextjs: '.open-next',
     sveltekit: '.svelte-kit-aws', 
-    'react-router': '.react-router-aws', // Adapter output directory
+    'react-router': '.nucel-build', // Nucel adapter output directory
   } as const,
   
   DEFAULT_BUILD_COMMAND: 'npm run build',

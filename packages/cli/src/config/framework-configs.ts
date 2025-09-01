@@ -28,7 +28,7 @@ export const FRAMEWORK_CONFIGS: Record<Framework, FrameworkConfig> = {
   },
   'react-router': {
     buildCommand: 'npm run build',
-    outputDirectory: '.react-router-aws',
+    outputDirectory: '.nucel-build',
     envPrefixes: ['VITE_'],
     configFiles: ['react-router.config.ts', 'react-router.config.js'],
     dependencies: ['react-router', '@react-router/dev'],

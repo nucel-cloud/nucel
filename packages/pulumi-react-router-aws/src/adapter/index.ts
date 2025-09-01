@@ -5,10 +5,10 @@ import { execSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export interface ReactRouterAwsAdapterOptions {
+export interface ReactRouterNucelAwsAdapterOptions {
   /**
    * The directory to output the built artifacts
-   * @default '.react-router-aws'
+   * @default '.nucel-build'
    */
   out?: string;
   
@@ -30,21 +30,21 @@ export interface ReactRouterAwsAdapterOptions {
   envPrefix?: string;
 }
 
-interface ReactRouterAdapter {
+interface ReactRouterNucelAdapter {
   name: string;
   build(config: any): Promise<any>;
 }
 
-export default function reactRouterAwsAdapter(options: ReactRouterAwsAdapterOptions = {}): ReactRouterAdapter {
+export default function reactRouterNucelAwsAdapter(options: ReactRouterNucelAwsAdapterOptions = {}): ReactRouterNucelAdapter {
   const {
-    out = '.react-router-aws',
+    out = '.nucel-build',
     polyfill = true,
     precompress = false,
     envPrefix = '',
   } = options;
 
   return {
-    name: '@donswayo/pulumi-react-router-aws',
+    name: '@donswayo/nucel-react-router-aws',
     
     async build(config: any) {
       const serverBuildPath = config.serverBuildFile || 'build/server';
