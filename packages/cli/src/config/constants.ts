@@ -6,8 +6,8 @@ export const CONSTANTS = {
   
   FRAMEWORK_OUTPUT_DIRECTORIES: {
     nextjs: '.open-next',
-    sveltekit: '.svelte-kit',
-    'react-router': 'react-router',
+    sveltekit: '.svelte-kit-aws', 
+    'react-router': '.react-router-aws', // Adapter output directory
   } as const,
   
   DEFAULT_BUILD_COMMAND: 'npm run build',
@@ -21,7 +21,8 @@ export const CONSTANTS = {
 
   SYSTEM_ENV_PREFIXES: [
     'PATH', 'HOME', 'USER', 'SHELL', 'TERM', 'PWD', 'OLDPWD',
-    'NODE', 'NODE_ENV', 'npm_', 'PNPM_', 'YARN_'
+    'NODE', 'NODE_ENV', 'npm_', 'PNPM_', 'YARN_',
+    'AWS_', 'LAMBDA_', '_HANDLER', '_X_AMZN_', 'PULUMI_'
   ] as const,
   
   PROJECT_TAG_PREFIX: 'nucel:',
