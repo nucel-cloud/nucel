@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "email build",
-    "dev": "email dev --port 3003 --dir ../../packages/email/templates",
+    "dev": "email dev --port 3003 --dir ../../packages/email/src/templates",
     "export": "email export",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
@@ -12,7 +12,7 @@
   "dependencies": {
     "@react-email/components": "0.5.1",
     "@nucel.cloud/email": "workspace:*",
-    "react": "19.1.1",
+    "react": "catalog:",
     "react-email": "4.2.8"
   },
   "devDependencies": {
