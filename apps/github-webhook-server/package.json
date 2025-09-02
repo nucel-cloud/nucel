@@ -1,0 +1,38 @@
+{
+  "name": "@nucel.cloud/github-webhook-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.1",
+    "@nucel.cloud/github-app": "workspace:*",
+    "dotenv": "^16.4.5",
+    "hono": "^4.9.5",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/supertest": "^6.0.3",
+    "@vitest/ui": "^3.2.4",
+    "playwright": "^1.55.0",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.0",
+    "typescript": "catalog:",
+    "vitest": "^3.2.4"
+  }
+}
