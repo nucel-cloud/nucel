@@ -1,5 +1,5 @@
 {
-  "name": "@nucel.cloud/pulumi-nextjs-aws",
+  "name": "@nucel.cloud/nextjs-aws",
   "version": "1.1.4",
   "description": "Reusable Pulumi components for deploying Next.js apps with OpenNext to AWS",
   "main": "./dist/index.js",

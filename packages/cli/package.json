@@ -32,7 +32,7 @@
     "@pulumi/pulumi": "catalog:",
     "@pulumi/aws": "catalog:",
     "@pulumi/command": "catalog:",
-    "@nucel.cloud/pulumi-nextjs-aws": "workspace:*",
+    "@nucel.cloud/nextjs-aws": "workspace:*",
     "@nucel.cloud/pulumi-sveltekit-aws": "workspace:*",
     "@nucel.cloud/pulumi-react-router-aws": "workspace:*",
     "commander": "^12.0.0",
