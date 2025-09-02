@@ -13,9 +13,9 @@
     "destroy:web": "pulumi destroy -s web"
   },
   "dependencies": {
-    "@donswayo/pulumi-nextjs-aws": "workspace:*",
-    "@donswayo/pulumi-sveltekit-aws": "workspace:*",
-    "@donswayo/pulumi-react-router-aws": "workspace:*",
+    "@nucel.cloud/nextjs-aws": "workspace:*",
+    "@nucel.cloud/sveltekit-aws": "workspace:*",
+    "@nucel.cloud/react-router-aws": "workspace:*",
     "@pulumi/aws": "^6.0.0",
     "@pulumi/pulumi": "^3.0.0"
   },

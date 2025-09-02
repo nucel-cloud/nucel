@@ -1,5 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
-import { Next } from "@donswayo/pulumi-nextjs-aws";
+import { Next } from "@nucel.cloud/nextjs-aws";
 import { ProjectConfig } from '../config/types.js';
 import { CONSTANTS } from '../config/constants.js';
 import * as path from 'path';

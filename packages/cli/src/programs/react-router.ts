@@ -1,5 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
-import { ReactRouterNucelAws } from "@donswayo/pulumi-react-router-aws";
+import { ReactRouterNucelAws } from "@nucel.cloud/react-router-aws";
 import { ProjectConfig } from '../config/types.js';
 import { CONSTANTS } from '../config/constants.js';
 import * as path from 'path';

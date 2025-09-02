@@ -5,7 +5,7 @@ Deploy modern web applications without vendor lock-in. Own your infrastructure. 
 ## Installation
 
 ```bash
-npm install -g @donswayo/nucel-cli
+npm install -g @nucel.cloud/nucel-cli
 ```
 
 ## Usage
@@ -45,10 +45,10 @@ For now: [./apps/docs](./apps/docs)
 
 | Package | Description |
 |---------|-------------|
-| [@donswayo/nucel-cli](https://www.npmjs.com/package/@donswayo/nucel-cli) | CLI for deployments |
-| [@donswayo/pulumi-nextjs-aws](https://www.npmjs.com/package/@donswayo/pulumi-nextjs-aws) | Next.js adapter |
-| [@donswayo/pulumi-sveltekit-aws](https://www.npmjs.com/package/@donswayo/pulumi-sveltekit-aws) | SvelteKit adapter |
-| [@donswayo/pulumi-react-router-aws](https://www.npmjs.com/package/@donswayo/pulumi-react-router-aws) | React Router v7 adapter |
+| [@nucel.cloud/nucel-cli](https://www.npmjs.com/package/@nucel.cloud/nucel-cli) | CLI for deployments |
+| [@nucel.cloud/nextjs-aws](https://www.npmjs.com/package/@nucel.cloud/nextjs-aws) | Next.js adapter |
+| [@nucel.cloud/sveltekit-aws](https://www.npmjs.com/package/@nucel.cloud/sveltekit-aws) | SvelteKit adapter |
+| [@nucel.cloud/react-router-aws](https://www.npmjs.com/package/@nucel.cloud/react-router-aws) | React Router v7 adapter |
 
 ## License
 

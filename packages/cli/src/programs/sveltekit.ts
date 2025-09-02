@@ -1,5 +1,5 @@
 import * as pulumi from "@pulumi/pulumi";
-import { SvelteKitAwsDeployment } from "@donswayo/pulumi-sveltekit-aws";
+import { SvelteKitNucelAws } from "@nucel.cloud/sveltekit-aws";
 import { ProjectConfig } from '../config/types.js';
 import { CONSTANTS } from '../config/constants.js';
 import * as path from 'path';
@@ -12,7 +12,7 @@ export function createSvelteKitProgram(config: ProjectConfig) {
     
     const buildPath = path.join(projectRoot, config.outputDirectory || '.svelte-kit/aws');
     
-    const deployment = new SvelteKitAwsDeployment(`${projectName}-deployment`, {
+    const deployment = new SvelteKitNucelAws(`${projectName}-deployment`, {
       buildPath,
       environment: config.environment,
       domain: config.domains?.[0] ? {
