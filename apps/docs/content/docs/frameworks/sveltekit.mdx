@@ -39,7 +39,7 @@ pnpm >= 10.11.0
 
 ```bash
 # Install the deployment package
-pnpm add -D @nucel.cloud/pulumi-sveltekit-aws
+pnpm add -D @nucel.cloud/sveltekit-aws
 ```
 
 ## Configuration
@@ -48,7 +48,7 @@ pnpm add -D @nucel.cloud/pulumi-sveltekit-aws
 
 ```javascript
 // svelte.config.js
-import adapter from '@nucel.cloud/pulumi-sveltekit-aws/adapter';
+import adapter from '@nucel.cloud/sveltekit-aws/adapter';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
@@ -102,7 +102,7 @@ console.log(env.PUBLIC_API_URL);
 ```typescript
 // infra/index.ts
 import * as pulumi from "@pulumi/pulumi";
-import { SvelteKitAwsDeployment } from "@nucel.cloud/pulumi-sveltekit-aws";
+import { SvelteKitAwsDeployment } from "@nucel.cloud/sveltekit-aws";
 
 const app = new SvelteKitAwsDeployment("my-sveltekit-app", {
   // Path to adapter build output
@@ -125,7 +125,7 @@ export const distributionId = app.distributionId;
 ```typescript
 // infra/index.ts
 import * as pulumi from "@pulumi/pulumi";
-import { SvelteKitAwsDeployment } from "@nucel.cloud/pulumi-sveltekit-aws";
+import { SvelteKitAwsDeployment } from "@nucel.cloud/sveltekit-aws";
 
 const app = new SvelteKitAwsDeployment("production-app", {
   buildPath: ".svelte-kit-aws",
@@ -588,7 +588,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 // import adapter from '@sveltejs/adapter-vercel';
 
 // Add our adapter
-import adapter from '@nucel.cloud/pulumi-sveltekit-aws/adapter';
+import adapter from '@nucel.cloud/sveltekit-aws/adapter';
 ```
 
 ### 2. Environment Variables

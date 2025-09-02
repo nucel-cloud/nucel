@@ -1,5 +1,5 @@
 {
-  "name": "@nucel.cloud/pulumi-react-router-aws",
+  "name": "@nucel.cloud/react-router-aws",
   "version": "0.1.2",
   "description": "React Router v7 adapter and Pulumi components for deploying to AWS Lambda, CloudFront, and S3",
   "type": "module",

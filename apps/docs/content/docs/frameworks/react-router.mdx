@@ -39,7 +39,7 @@ react-router >= 7.0.0
 
 ```bash
 # Install the deployment package
-pnpm add -D @nucel.cloud/pulumi-react-router-aws
+pnpm add -D @nucel.cloud/react-router-aws
 ```
 
 ## Configuration
@@ -49,7 +49,7 @@ pnpm add -D @nucel.cloud/pulumi-react-router-aws
 ```typescript
 // vite.config.ts
 import { vitePlugin as reactRouter } from "@react-router/dev/vite";
-import adapter from "@nucel.cloud/pulumi-react-router-aws/adapter";
+import adapter from "@nucel.cloud/react-router-aws/adapter";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -110,7 +110,7 @@ export default function Root() {
 ```typescript
 // infra/index.ts
 import * as pulumi from "@pulumi/pulumi";
-import { ReactRouterAwsDeployment } from "@nucel.cloud/pulumi-react-router-aws";
+import { ReactRouterAwsDeployment } from "@nucel.cloud/react-router-aws";
 
 const app = new ReactRouterAwsDeployment("my-react-router-app", {
   // Path to adapter build output
@@ -133,7 +133,7 @@ export const distributionId = app.distributionId;
 ```typescript
 // infra/index.ts
 import * as pulumi from "@pulumi/pulumi";
-import { ReactRouterAwsDeployment } from "@nucel.cloud/pulumi-react-router-aws";
+import { ReactRouterAwsDeployment } from "@nucel.cloud/react-router-aws";
 
 const app = new ReactRouterAwsDeployment("production-app", {
   buildPath: ".react-router-aws",
