@@ -1,5 +1,5 @@
 {
-  "name": "@donswayo/nucel-cli",
+  "name": "@nucel.cloud/nucel-cli",
   "version": "0.1.0",
   "description": "The open-source deployment platform for modern web apps",
   "type": "module",
@@ -32,9 +32,9 @@
     "@pulumi/pulumi": "catalog:",
     "@pulumi/aws": "catalog:",
     "@pulumi/command": "catalog:",
-    "@donswayo/pulumi-nextjs-aws": "workspace:*",
-    "@donswayo/pulumi-sveltekit-aws": "workspace:*",
-    "@donswayo/pulumi-react-router-aws": "workspace:*",
+    "@nucel.cloud/pulumi-nextjs-aws": "workspace:*",
+    "@nucel.cloud/pulumi-sveltekit-aws": "workspace:*",
+    "@nucel.cloud/pulumi-react-router-aws": "workspace:*",
     "commander": "^12.0.0",
     "chalk": "^5.3.0",
     "ora": "^8.0.1",
@@ -81,11 +81,11 @@
     "vercel-alternative",
     "open-source"
   ],
-  "author": "DonsWayo",
+  "author": "Nucel Cloud",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/DonsWayo/nucel"
+    "url": "https://github.com/nucel-cloud/nucel"
   },
   "homepage": "https://nucel.cloud"
 }

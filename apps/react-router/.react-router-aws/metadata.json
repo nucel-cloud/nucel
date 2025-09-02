@@ -1,0 +1,8 @@
+{
+  "adapter": "@donswayo/pulumi-react-router-aws",
+  "timestamp": "2025-09-01T22:45:10.983Z",
+  "polyfill": true,
+  "precompress": false,
+  "envPrefix": "",
+  "routes": 10
+}

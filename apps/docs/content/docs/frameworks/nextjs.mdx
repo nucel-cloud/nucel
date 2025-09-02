@@ -40,7 +40,7 @@ next >= 14.0.0
 
 ```bash
 # Install the deployment package
-pnpm add -D @donswayo/pulumi-nextjs-aws
+pnpm add -D @nucel.cloud/pulumi-nextjs-aws
 
 # Install OpenNext for building
 pnpm add -D @opennextjs/aws
@@ -134,7 +134,7 @@ export default config;
 ```typescript
 // infra/index.ts
 import * as pulumi from "@pulumi/pulumi";
-import { Next } from "@donswayo/pulumi-nextjs-aws";
+import { Next } from "@nucel.cloud/pulumi-nextjs-aws";
 
 const site = new Next("my-nextjs-app", {
   // Required paths
@@ -161,7 +161,7 @@ export const distributionId = site.distributionId;
 ```typescript
 // infra/index.ts
 import * as pulumi from "@pulumi/pulumi";
-import { Next } from "@donswayo/pulumi-nextjs-aws";
+import { Next } from "@nucel.cloud/pulumi-nextjs-aws";
 
 const site = new Next("production-app", {
   appPath: ".",

@@ -1,7 +1,7 @@
 import type { Config } from '@react-router/dev/config';
 import { glob } from 'node:fs/promises';
 import { createGetUrl, getSlugs } from 'fumadocs-core/source';
-import reactRouterNucelAwsAdapter from '@donswayo/pulumi-react-router-aws/adapter';
+import reactRouterNucelAwsAdapter from '@nucel.cloud/pulumi-react-router-aws/adapter';
 
 const getUrl = createGetUrl('/docs');
 
