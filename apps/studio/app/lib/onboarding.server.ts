@@ -1,5 +1,5 @@
 import { db, onboardingProgress, githubInstallation, awsAccount } from "@nucel/database";
-import { eq, isNull } from "drizzle-orm";
+import { eq, isNull, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
 
@@ -274,8 +274,12 @@ export async function saveAWSAccount(
   const existing = await db
     .select()
     .from(awsAccount)
-    .where(eq(awsAccount.userId, userId))
-    .where(eq(awsAccount.accountId, data.accountId))
+    .where(
+      and(
+        eq(awsAccount.userId, userId),
+        eq(awsAccount.accountId, data.accountId)
+      )
+    )
     .limit(1);
 
   if (existing.length > 0) {

@@ -4,17 +4,16 @@ import { eq, desc, and } from "drizzle-orm";
 interface DeploymentWithProject {
   id: string;
   projectId: string;
-  projectName: string;
-  projectSlug: string;
-  repository: string;
+  projectName: string | null;
+  projectSlug: string | null;
+  repository: string | null;
   commitSha: string;
-  commitMessage: string;
+  commitMessage: string | null;
   branch: string;
   status: string;
-  triggeredBy: string | null;
+  commitAuthor: string | null;
   deploymentUrl: string | null;
-  logUrl: string | null;
-  startedAt: Date | null;
+  buildLogs: string | null;
   completedAt: Date | null;
   createdAt: Date;
 }
@@ -32,10 +31,9 @@ export async function getUserDeployments(userId: string, limit = 20): Promise<De
       commitMessage: deployment.commitMessage,
       branch: deployment.branch,
       status: deployment.status,
-      triggeredBy: deployment.triggeredBy,
+      commitAuthor: deployment.commitAuthor,
       deploymentUrl: deployment.deploymentUrl,
-      logUrl: deployment.logUrl,
-      startedAt: deployment.startedAt,
+      buildLogs: deployment.buildLogs,
       completedAt: deployment.completedAt,
       createdAt: deployment.createdAt,
     })
@@ -65,10 +63,9 @@ export async function getProjectDeployments(
       commitMessage: deployment.commitMessage,
       branch: deployment.branch,
       status: deployment.status,
-      triggeredBy: deployment.triggeredBy,
+      commitAuthor: deployment.commitAuthor,
       deploymentUrl: deployment.deploymentUrl,
-      logUrl: deployment.logUrl,
-      startedAt: deployment.startedAt,
+      buildLogs: deployment.buildLogs,
       completedAt: deployment.completedAt,
       createdAt: deployment.createdAt,
     })
@@ -102,10 +99,9 @@ export async function getDeployment(
       commitMessage: deployment.commitMessage,
       branch: deployment.branch,
       status: deployment.status,
-      triggeredBy: deployment.triggeredBy,
+      commitAuthor: deployment.commitAuthor,
       deploymentUrl: deployment.deploymentUrl,
-      logUrl: deployment.logUrl,
-      startedAt: deployment.startedAt,
+      buildLogs: deployment.buildLogs,
       completedAt: deployment.completedAt,
       createdAt: deployment.createdAt,
     })
@@ -125,23 +121,18 @@ export async function getDeployment(
 // Update deployment status
 export async function updateDeploymentStatus(
   deploymentId: string,
-  status: "pending" | "building" | "deploying" | "success" | "failed" | "cancelled",
+  status: "pending" | "building" | "deploying" | "ready" | "failed" | "cancelled",
   details?: {
     deploymentUrl?: string;
-    logUrl?: string;
+    buildLogs?: string;
     error?: string;
   }
 ) {
   const updates: Record<string, unknown> = {
     status,
-    updatedAt: new Date(),
   };
 
-  if (status === "building" && !details?.logUrl) {
-    updates.startedAt = new Date();
-  }
-
-  if (status === "success" || status === "failed" || status === "cancelled") {
+  if (status === "ready" || status === "failed" || status === "cancelled") {
     updates.completedAt = new Date();
   }
 
@@ -149,8 +140,8 @@ export async function updateDeploymentStatus(
     updates.deploymentUrl = details.deploymentUrl;
   }
 
-  if (details?.logUrl) {
-    updates.logUrl = details.logUrl;
+  if (details?.buildLogs) {
+    updates.buildLogs = details.buildLogs;
   }
 
   if (details?.error) {
@@ -193,7 +184,7 @@ export async function getProjectDeploymentStats(projectId: string, userId: strin
 
   const stats = {
     total: deployments.length,
-    success: deployments.filter(d => d.status === "success").length,
+    success: deployments.filter(d => d.status === "ready").length,
     failed: deployments.filter(d => d.status === "failed").length,
     pending: deployments.filter(d => d.status === "pending").length,
     building: deployments.filter(d => d.status === "building").length,
@@ -205,7 +196,7 @@ export async function getProjectDeploymentStats(projectId: string, userId: strin
 
   // Calculate average deployment time
   const completedDeployments = deployments.filter(
-    d => d.status === "success" && d.completedAt && d.createdAt
+    d => d.status === "ready" && d.completedAt && d.createdAt
   );
 
   if (completedDeployments.length > 0) {

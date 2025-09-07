@@ -23,7 +23,7 @@ interface SetupStatus {
 }
 import { createProject, setupGitHubSecrets, createGitHubWorkflow } from "~/lib/projects.server";
 import { NucelGitHubApp } from "@nucel.cloud/github-app";
-import { db, onboardingProgress } from "@nucel/database";
+import { db, onboardingProgress, deployment } from "@nucel/database";
 import { eq } from "drizzle-orm";
 import { Button } from "@nucel.cloud/design-system/components/ui/button";
 import { Card, CardContent } from "@nucel.cloud/design-system/components/ui/card";
@@ -120,8 +120,11 @@ export async function action({ request }: Route.ActionArgs) {
         
         // Get the selected repository from progress metadata
         const progress = await getOrCreateOnboardingProgress(user.id);
-        const metadata = progress.metadata || {};
-        const selectedRepo = metadata.selectedRepository;
+        const metadata = progress.metadata || {} as Record<string, any>;
+        const selectedRepo = metadata.selectedRepository as {
+          id: string;
+          name: string;
+        } | undefined;
         
         if (!selectedRepo) {
           throw new Error("No repository selected");
@@ -135,18 +138,11 @@ export async function action({ request }: Route.ActionArgs) {
           throw new Error("GitHub or AWS not configured");
         }
         
-        // Store project data in metadata for complete step
-        metadata.projectData = {
-          id: String(projectName),
-          name: String(projectName),
-          repository: String(selectedRepo.name),
-        };
-        
         // Create the project
         const projectId = await createProject({
           userId: user.id,
           name: String(projectName),
-          repository: String(selectedRepo.name),
+          repository: selectedRepo.name,
           repositoryId: Number(selectedRepo.id),
           githubInstallationId: githubInstalls.installations[0].id,
           awsAccountId: awsAccounts[0].id,
@@ -156,6 +152,13 @@ export async function action({ request }: Route.ActionArgs) {
           installCommand: installCommand ? String(installCommand) : undefined,
           nodeVersion: String(nodeVersion),
         });
+        
+        // Store project data in metadata for complete step
+        metadata.projectData = {
+          id: projectId,
+          name: String(projectName),
+          repository: selectedRepo.name,
+        };
         
         // Setup GitHub secrets and workflow file
         setupStatus = {

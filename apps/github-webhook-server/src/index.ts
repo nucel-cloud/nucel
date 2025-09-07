@@ -77,7 +77,7 @@ console.log(`✅ Server is running at http://localhost:${port}`);
 
 // Test database connection
 try {
-  const testQuery = await db.select().from(githubInstallation).limit(1);
+  await db.select().from(githubInstallation).limit(1);
   console.log('✅ Database connection successful');
 } catch (error) {
   console.error('❌ Database connection failed:', error);
@@ -173,7 +173,7 @@ githubApp.on('push', async ({ payload }) => {
   
   const proj = projects[0];
   
-  if (branch !== proj.defaultBranch) {
+  if (!proj || branch !== proj.defaultBranch) {
     console.log(`[GitHub Webhook] Push to non-default branch ${branch}, skipping`);
     return;
   }
@@ -184,11 +184,12 @@ githubApp.on('push', async ({ payload }) => {
     projectId: proj.id,
     commitSha: payload.after,
     commitMessage: payload.head_commit?.message || '',
+    commitAuthor: payload.pusher.name,
     branch,
     status: 'pending',
-    triggeredBy: payload.pusher.name,
+    deploymentType: 'commit',
+    environment: 'production',
     createdAt: new Date(),
-    updatedAt: new Date(),
   });
   
   console.log(`[GitHub Webhook] Created deployment for ${payload.repository.full_name}`);
