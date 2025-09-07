@@ -29,6 +29,7 @@ program
   .option('--preview', 'Preview changes without deploying')
   .option('--build', 'Force build even if output exists')
   .option('--skip-build', 'Skip build step')
+  .option('--build-command <command>', 'Custom build command')
   .option('--backend <backend>', 'State backend (local, s3, auto)', 'auto')
   .action(async (options, command) => {
     try {
@@ -41,6 +42,7 @@ program
         debug: parentOpts.debug || false,
         build: options.build || false,
         skipBuild: options.skipBuild || false,
+        buildCommand: options.buildCommand,
         backend: options.backend || 'auto',
       });
     } catch (error) {

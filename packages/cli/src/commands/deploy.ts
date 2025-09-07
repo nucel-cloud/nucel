@@ -60,12 +60,16 @@ export async function deploy(options: DeployOptions) {
     if (shouldBuild) {
       const buildSpinner = ora('Building application...').start();
       try {
-        // Use internal build process for each framework
-        const buildCommand = await getInternalBuildCommand(config);
+        // Use custom build command if provided, otherwise use internal build process
+        const buildCommand = options.buildCommand || await getInternalBuildCommand(config);
         
         if (verbose || debug) {
           buildSpinner.text = `Running: ${buildCommand}`;
-          console.log(chalk.gray(`\nUsing Nucel internal build process for ${config.framework}`));
+          if (options.buildCommand) {
+            console.log(chalk.gray(`\nUsing custom build command`));
+          } else {
+            console.log(chalk.gray(`\nUsing Nucel internal build process for ${config.framework}`));
+          }
         }
         
         await buildProject(buildCommand, { verbose: verbose || debug });
