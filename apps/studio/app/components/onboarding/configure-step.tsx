@@ -13,6 +13,7 @@ interface ConfigureStepProps {
 }
 
 const frameworks = [
+  { value: "react-router", label: "React Router", buildCommand: "npm run build", outputDir: "build" },
   { value: "nextjs", label: "Next.js", buildCommand: "npm run build", outputDir: ".next" },
   { value: "sveltekit", label: "SvelteKit", buildCommand: "npm run build", outputDir: "build" },
   { value: "react", label: "React (Vite)", buildCommand: "npm run build", outputDir: "dist" },
@@ -23,9 +24,9 @@ const frameworks = [
 
 export function ConfigureStep({ onComplete }: ConfigureStepProps) {
   const [projectName, setProjectName] = useState("");
-  const [framework, setFramework] = useState("nextjs");
+  const [framework, setFramework] = useState("react-router");
   const [buildCommand, setBuildCommand] = useState("npm run build");
-  const [outputDirectory, setOutputDirectory] = useState(".next");
+  const [outputDirectory, setOutputDirectory] = useState("build");
   const [installCommand, setInstallCommand] = useState("npm install");
   const [envVars, setEnvVars] = useState("");
 
