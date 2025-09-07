@@ -33,20 +33,11 @@ export function RepositoryStep({ githubInstallations, onComplete }: RepositorySt
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [repositories, setRepositories] = useState<Repository[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start with false
   const [error, setError] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false); // Track if we've fetched
 
-  useEffect(() => {
-    // Fetch repositories for all installations
-    if (githubInstallations?.installations?.length > 0) {
-      fetchRepositories();
-    } else {
-      setLoading(false);
-      setError("No GitHub installations found");
-    }
-  }, [githubInstallations]);
-
-  const fetchRepositories = async () => {
+  const fetchRepositories = () => {
     setLoading(true);
     setError(null);
     
@@ -64,6 +55,17 @@ export function RepositoryStep({ githubInstallations, onComplete }: RepositorySt
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Fetch repositories for all installations only once
+    if (githubInstallations?.installations?.length > 0 && !hasFetched) {
+      setHasFetched(true);
+      fetchRepositories();
+    } else if (!githubInstallations?.installations?.length && !hasFetched) {
+      setHasFetched(true);
+      setError("No GitHub installations found");
+    }
+  }, [githubInstallations, hasFetched]); // Depend on installations and hasFetched flag
 
   // Handle fetcher response
   useEffect(() => {
@@ -119,7 +121,7 @@ export function RepositoryStep({ githubInstallations, onComplete }: RepositorySt
       </div>
 
       <div className="space-y-2 max-h-96 overflow-y-auto">
-        {loading ? (
+        {(loading || fetcher.state === "submitting") ? (
           <div className="text-center py-8">
             <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Loading repositories...</p>
