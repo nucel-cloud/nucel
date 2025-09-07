@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate, Form } from "react-router";
 import type { Route } from "./+types/onboarding";
 import { requireUser } from "~/lib/sessions.server";
@@ -29,6 +29,8 @@ import { CompleteStep } from "~/components/onboarding/complete-step";
 // Server loader - runs only on server
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireUser(request);
+  const url = new URL(request.url);
+  const stepParam = url.searchParams.get("step");
 
   // Get or create onboarding progress
   const progress = await getOrCreateOnboardingProgress(user.id);
@@ -47,9 +49,18 @@ export async function loader({ request }: Route.LoaderArgs) {
   // Get AWS accounts
   const awsAccounts = await getUserAWSAccounts(user.id);
 
+  // Override progress step if URL parameter is provided
+  let currentStep = progress.currentStep;
+  if (stepParam && ["github", "aws", "repository", "configure", "complete"].includes(stepParam)) {
+    currentStep = stepParam as OnboardingStep;
+  }
+
   return {
     user,
-    progress,
+    progress: {
+      ...progress,
+      currentStep,
+    },
     githubInstallations,
     awsAccounts,
   };
@@ -172,13 +183,21 @@ export default function Onboarding({ loaderData }: Route.ComponentProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(progress.currentStep);
 
+  // Update current step when progress changes (from URL params)
+  React.useEffect(() => {
+    setCurrentStep(progress.currentStep);
+  }, [progress.currentStep]);
+
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep);
   const progressPercentage = ((currentStepIndex + 1) / steps.length) * 100;
 
   const handleStepComplete = async (step: OnboardingStep) => {
     const nextStepIndex = steps.findIndex((s) => s.id === step) + 1;
     if (nextStepIndex < steps.length) {
-      setCurrentStep(steps[nextStepIndex].id as OnboardingStep);
+      const nextStep = steps[nextStepIndex].id;
+      setCurrentStep(nextStep as OnboardingStep);
+      // Update URL to reflect the new step
+      navigate(`/onboarding?step=${nextStep}`, { replace: true });
     }
   };
 
@@ -235,20 +254,23 @@ export default function Onboarding({ loaderData }: Route.ComponentProps) {
               const Icon = step.icon;
               const isCompleted = index < currentStepIndex;
               const isCurrent = index === currentStepIndex;
+              const canNavigate = isCompleted || isCurrent;
 
               return (
                 <div
                   key={step.id}
                   className={cn(
-                    "flex flex-col items-center gap-2 text-sm",
+                    "flex flex-col items-center gap-2 text-sm transition-colors",
                     isCompleted && "text-primary",
                     isCurrent && "text-foreground font-medium",
-                    !isCompleted && !isCurrent && "text-muted-foreground"
+                    !isCompleted && !isCurrent && "text-muted-foreground",
+                    canNavigate && "cursor-pointer hover:opacity-70"
                   )}
+                  onClick={() => canNavigate && navigate(`/onboarding?step=${step.id}`)}
                 >
                   <div
                     className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center border-2",
+                      "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors",
                       isCompleted && "bg-primary border-primary text-primary-foreground",
                       isCurrent && "border-primary",
                       !isCompleted && !isCurrent && "border-muted"
