@@ -1,0 +1,77 @@
+name: Deploy with Nucel
+
+on:
+  push:
+    branches:
+      - {{DEFAULT_BRANCH}}
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  NODE_VERSION: '{{NODE_VERSION}}'
+  NUCEL_PROJECT_ID: ${{ secrets.NUCEL_PROJECT_ID }}
+  NUCEL_AWS_ROLE_ARN: ${{ secrets.NUCEL_AWS_ROLE_ARN }}
+  NUCEL_EXTERNAL_ID: ${{ secrets.NUCEL_EXTERNAL_ID }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: {{INSTALL_COMMAND}}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.NUCEL_AWS_ROLE_ARN }}
+          role-session-name: nucel-deployment-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Nucel CLI
+        run: npm install -g @nucel.cloud/cli
+
+      - name: Build application
+        run: {{BUILD_COMMAND}}
+
+      - name: Deploy to AWS
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            nucel deploy --stack preview-pr-${{ github.event.pull_request.number }}
+          else
+            nucel deploy --stack {{PULUMI_STACK_NAME}}
+          fi
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `### 🚀 Preview Deployment Ready!
+            
+            Your changes have been deployed to a preview environment.
+            
+            **Stack:** preview-pr-${{ github.event.pull_request.number }}
+            **Commit:** ${{ github.sha }}`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

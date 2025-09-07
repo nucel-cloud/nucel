@@ -9,10 +9,25 @@ Parameters:
     MaxLength: 128
     AllowedPattern: '^[a-zA-Z0-9-]+$'
   
+  DeploymentMode:
+    Type: String
+    Description: Deployment mode - SaaS (hosted by Nucel) or SelfHosted
+    Default: 'SelfHosted'
+    AllowedValues:
+      - 'SaaS'
+      - 'SelfHosted'
+  
   NucelAccountId:
     Type: String
-    Description: Nucel platform AWS account ID (if using hosted version)
-    Default: '758346258758'  # Replace with actual Nucel account ID if hosted
+    Description: Nucel platform AWS account ID (only used if DeploymentMode is SaaS)
+    Default: '758346258758'  # Replace with actual Nucel account ID if using SaaS
+  
+  GitHubOrganization:
+    Type: String
+    Description: GitHub organization or username (for OIDC trust policy)
+    Default: '*'
+    MinLength: 1
+    MaxLength: 100
   
   StackPrefix:
     Type: String
@@ -26,6 +41,11 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
+          default: "Deployment Configuration"
+        Parameters:
+          - DeploymentMode
+          - GitHubOrganization
+      - Label:
           default: "Security Configuration"
         Parameters:
           - ExternalId
@@ -35,14 +55,38 @@ Metadata:
         Parameters:
           - StackPrefix
     ParameterLabels:
+      DeploymentMode:
+        default: "Deployment Mode"
+      GitHubOrganization:
+        default: "GitHub Organization/Username"
       ExternalId:
         default: "External ID (provided by Nucel)"
       NucelAccountId:
-        default: "Nucel AWS Account ID"
+        default: "Nucel AWS Account ID (for SaaS mode)"
       StackPrefix:
         default: "Resource Prefix"
 
+Conditions:
+  IsSaaSMode: !Equals [!Ref DeploymentMode, 'SaaS']
+  IsSelfHostedMode: !Equals [!Ref DeploymentMode, 'SelfHosted']
+
 Resources:
+  # GitHub Actions OIDC Provider
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+      Tags:
+        - Key: ManagedBy
+          Value: Nucel
+        - Key: Purpose
+          Value: GitHubActionsOIDC
+
   # IAM Role for Nucel to assume
   NucelDeploymentRole:
     Type: AWS::IAM::Role
@@ -52,13 +96,27 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
+          # Allow GitHub Actions OIDC
           - Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::${NucelAccountId}:root'
-            Action: 'sts:AssumeRole'
+              Federated: !Sub 'arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com'
+            Action: 'sts:AssumeRoleWithWebIdentity'
             Condition:
               StringEquals:
-                'sts:ExternalId': !Ref ExternalId
+                'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com'
+              StringLike:
+                'token.actions.githubusercontent.com:sub': !Sub 'repo:${GitHubOrganization}/*:*'
+          # Allow Nucel SaaS platform (only if using SaaS mode)
+          - !If
+            - IsSaaSMode
+            - Effect: Allow
+              Principal:
+                AWS: !Sub 'arn:aws:iam::${NucelAccountId}:root'
+              Action: 'sts:AssumeRole'
+              Condition:
+                StringEquals:
+                  'sts:ExternalId': !Ref ExternalId
+            - !Ref AWS::NoValue
           # Allow local development/self-hosted
           - Effect: Allow
             Principal:
@@ -157,7 +215,7 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          # Bucket operations
+          # Bucket operations for application and Pulumi state
           - Effect: Allow
             Action:
               - 's3:CreateBucket'
@@ -178,10 +236,13 @@ Resources:
               - 's3:PutBucketPublicAccessBlock'
               - 's3:PutBucketTagging'
               - 's3:GetBucketTagging'
+              - 's3:GetBucketEncryption'
+              - 's3:PutBucketEncryption'
             Resource:
               - !Sub 'arn:aws:s3:::${StackPrefix}-*'
+              - !Sub 'arn:aws:s3:::nucel-pulumi-state-*'
           
-          # Object operations
+          # Object operations for application and Pulumi state
           - Effect: Allow
             Action:
               - 's3:GetObject'
@@ -191,6 +252,7 @@ Resources:
               - 's3:ListBucketVersions'
             Resource:
               - !Sub 'arn:aws:s3:::${StackPrefix}-*/*'
+              - !Sub 'arn:aws:s3:::nucel-pulumi-state-*/*'
           
           # List all buckets (needed for console)
           - Effect: Allow
