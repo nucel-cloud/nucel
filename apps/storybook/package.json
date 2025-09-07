@@ -2,11 +2,12 @@
   "name": "storybook",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "storybook dev -p 6006",
     "build": "storybook build",
     "chromatic": "chromatic --exit-zero-on-changes",
-    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "clean": "git clean -xdf .cache .turbo dist node_modules storybook-static",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
@@ -16,7 +17,6 @@
     "date-fns": "^4.1.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.511.0",
-    "next": "15.3.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.56.4",
@@ -26,22 +26,26 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^3.2.6",
+    "@repo/tailwind-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@storybook/addon-essentials": "^8.6.14",
     "@storybook/addon-interactions": "^8.6.14",
     "@storybook/addon-onboarding": "^8.6.14",
     "@storybook/addon-themes": "^8.6.14",
     "@storybook/blocks": "^8.6.14",
-    "@storybook/nextjs": "^8.6.14",
     "@storybook/react": "^8.6.14",
+    "@storybook/react-vite": "^8.6.14",
     "@storybook/test": "^8.6.14",
+    "@tailwindcss/vite": "^4.1.7",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.3.4",
     "chromatic": "^12.0.0",
     "postcss": "^8",
     "storybook": "^8.6.14",
     "tailwindcss": "^4.1.7",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^6.0.6"
   }
 }
