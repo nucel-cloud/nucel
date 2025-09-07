@@ -23,14 +23,12 @@ export async function requireSession(request: Request) {
 export async function requireUser(request: Request) {
   const session = await requireSession(request);
 
-  // Get the user from the session
-  const user = await auth.api.getUser({ headers: request.headers });
-
-  if (!user) {
+  // Session already contains user data
+  if (!session.user) {
     throw new Response("Unauthorized", { status: 401 });
   }
 
-  return user;
+  return session.user;
 }
 
 export async function requireAdmin(request: Request) {

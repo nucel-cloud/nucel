@@ -1,6 +1,5 @@
 import { redirect } from "react-router";
-import { getSession } from "~/lib/sessions.server";
-import { auth } from "~/lib/auth.server";
+import { getSession, requireUser } from "~/lib/sessions.server";
 
 export async function authMiddleware({ request }: { request: Request }) {
   const session = await getSession(request);
@@ -26,18 +25,11 @@ export async function optionalAuthMiddleware({
 }
 
 export async function adminMiddleware({ request }: { request: Request }) {
-  const session = await getSession(request);
-
-  if (!session) {
-    throw redirect("/login");
-  }
-
-  // Get user to check role
-  const user = await auth.api.getUser({ headers: request.headers });
+  const user = await requireUser(request);
 
   if (!user || user.role !== "admin") {
     throw new Response("Forbidden", { status: 403 });
   }
 
-  return { session, user };
+  return user;
 }

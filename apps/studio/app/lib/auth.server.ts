@@ -2,10 +2,13 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, twoFactor, multiSession, emailOTP } from "better-auth/plugins";
 import { db } from "@nucel/database";
+import * as schema from "@nucel/database";
 
 export const auth = betterAuth({
+  basePath: "/api/auth",
   database: drizzleAdapter(db, {
     provider: "pg",
+    schema,
   }),
 
   emailAndPassword: {
@@ -58,6 +61,12 @@ export const auth = betterAuth({
       maxAge: 60 * 5, // 5 minutes
     },
   },
+  
+  cookies: {
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    httpOnly: true,
+  },
 
   trustedOrigins:
     process.env.NODE_ENV === "production"
@@ -70,7 +79,9 @@ export const auth = betterAuth({
   },
 
   advanced: {
-    generateId: () => crypto.randomUUID(),
+    database: {
+      generateId: () => crypto.randomUUID(),
+    },
     crossSubDomainCookies: {
       enabled: process.env.NODE_ENV === "production",
       domain: process.env.COOKIE_DOMAIN,
