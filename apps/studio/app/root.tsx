@@ -5,9 +5,13 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
 } from "react-router";
-
+import { data } from "react-router";
 import type { Route } from "./+types/root";
+import { getToast } from "remix-toast";
+import { Providers } from "./components/providers";
+import { Toast } from "./components/toast";
 import "./app.css";
 
 export const links: Route.LinksFunction = () => [
@@ -23,6 +27,11 @@ export const links: Route.LinksFunction = () => [
   },
 ];
 
+export const loader = async ({ request }: Route.LoaderArgs) => {
+  const { toast, headers } = await getToast(request);
+  return data({ toast }, { headers });
+};
+
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -33,7 +42,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {children}
+        <Providers>{children}</Providers>
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -42,7 +51,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const { toast: toastData } = useLoaderData<typeof loader>();
+
+  return (
+    <>
+      <Outlet />
+      {toastData && (
+        <Toast
+          message={toastData.message}
+          type={toastData.type as "success" | "error" | "info" | "warning"}
+          description={toastData.description}
+        />
+      )}
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
@@ -63,11 +85,11 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
   return (
     <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
+      <h1 className="text-4xl font-bold text-destructive mb-4">{message}</h1>
+      <p className="text-muted-foreground mb-4">{details}</p>
       {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
-          <code>{stack}</code>
+        <pre className="w-full p-4 overflow-x-auto bg-muted rounded-lg">
+          <code className="text-xs">{stack}</code>
         </pre>
       )}
     </main>
