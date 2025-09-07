@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { Input } from '@repo/design-system/components/ui/input';
+import { Input } from '@nucel.cloud/design-system/components/ui/input';
 
 /**
  * Displays a form input field or a component that looks like an input field.

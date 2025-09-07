@@ -5,17 +5,17 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "styles/globals.css",
+    "css": "@repo/tailwind-config",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "@repo/design-system/components",
-    "utils": "@repo/design-system/lib/utils",
-    "hooks": "@repo/design-system/hooks",
-    "lib": "@repo/design-system/lib",
-    "ui": "@repo/design-system/components/ui"
+    "components": "@nucel.cloud/design-system/components",
+    "utils": "@nucel.cloud/design-system/lib/utils",
+    "hooks": "@nucel.cloud/design-system/hooks",
+    "lib": "@nucel.cloud/design-system/lib",
+    "ui": "@nucel.cloud/design-system/components/ui"
   },
   "iconLibrary": "lucide"
 }

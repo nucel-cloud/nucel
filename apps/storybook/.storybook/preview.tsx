@@ -1,10 +1,9 @@
-import { Toaster } from '@repo/design-system/components/ui/sonner';
-import { TooltipProvider } from '@repo/design-system/components/ui/tooltip';
-import { ThemeProvider } from '@repo/design-system/providers/theme';
-import { withThemeByClassName } from '@storybook/addon-themes';
-import type { Preview } from '@storybook/react';
+import { Toaster } from "@nucel.cloud/design-system/components/ui/sonner";
+import { TooltipProvider } from "@nucel.cloud/design-system/components/ui/tooltip";
+import { withThemeByClassName } from "@storybook/addon-themes";
+import type { Preview } from "@storybook/react";
 
-import '@repo/design-system/styles/globals.css';
+import "../app.css";
 
 const preview: Preview = {
   parameters: {
@@ -17,12 +16,12 @@ const preview: Preview = {
     chromatic: {
       modes: {
         light: {
-          theme: 'light',
-          className: 'light',
+          theme: "light",
+          className: "light",
         },
         dark: {
-          theme: 'dark',
-          className: 'dark',
+          theme: "dark",
+          className: "dark",
         },
       },
     },
@@ -30,20 +29,18 @@ const preview: Preview = {
   decorators: [
     withThemeByClassName({
       themes: {
-        light: 'light',
-        dark: 'dark',
+        light: "light",
+        dark: "dark",
       },
-      defaultTheme: 'light',
+      defaultTheme: "light",
     }),
     (Story) => {
       return (
         <div className="bg-background">
-          <ThemeProvider>
-            <TooltipProvider>
-              <Story />
-            </TooltipProvider>
-            <Toaster />
-          </ThemeProvider>
+          <TooltipProvider>
+            <Story />
+          </TooltipProvider>
+          <Toaster />
         </div>
       );
     },
