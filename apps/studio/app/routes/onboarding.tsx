@@ -14,6 +14,7 @@ import {
   generateCloudFormationUrl,
   type OnboardingStep 
 } from "~/lib/onboarding.server";
+import { NucelGitHubApp } from "@nucel.cloud/github-app";
 import { Button } from "@nucel.cloud/design-system/components/ui/button";
 import { Card, CardContent } from "@nucel.cloud/design-system/components/ui/card";
 import { Progress } from "@nucel.cloud/design-system/components/ui/progress";
@@ -80,6 +81,11 @@ export async function action({ request }: Route.ActionArgs) {
           accountType: String(accountType) || "User",
           accountAvatarUrl: accountAvatarUrl ? String(accountAvatarUrl) : null,
         });
+        
+        // Mark GitHub step as complete
+        await updateOnboardingStep(user.id, "github");
+        
+        return { success: true };
       }
       break;
     }
@@ -101,6 +107,11 @@ export async function action({ request }: Route.ActionArgs) {
           region: region ? String(region) : "us-east-1",
           stackName: stackName ? String(stackName) : null,
         });
+        
+        // Mark AWS step as complete
+        await updateOnboardingStep(user.id, "aws");
+        
+        return { success: true };
       }
       break;
     }
@@ -110,6 +121,38 @@ export async function action({ request }: Route.ActionArgs) {
       const region = formData.get("region") as string || "us-east-1";
       const url = generateCloudFormationUrl(externalId, region);
       return { externalId, cloudFormationUrl: url };
+    }
+
+    case "fetch-repositories": {
+      const installationIds = JSON.parse(formData.get("installationIds") as string || "[]");
+      
+      try {
+        // Initialize GitHub App
+        const githubApp = new NucelGitHubApp({
+          appId: process.env.GITHUB_APP_ID!,
+          privateKey: process.env.GITHUB_APP_PRIVATE_KEY!,
+          webhookSecret: process.env.GITHUB_WEBHOOK_SECRET!,
+        });
+
+        const allRepos = [];
+        
+        // Fetch repositories for each installation
+        for (const installationId of installationIds) {
+          const octokit = await githubApp.getInstallationOctokit(installationId);
+          
+          // Get repositories for this installation
+          const { data } = await octokit.rest.apps.listReposAccessibleToInstallation({
+            per_page: 100,
+          });
+          
+          allRepos.push(...data.repositories);
+        }
+        
+        return { repositories: allRepos };
+      } catch (error) {
+        console.error("Error fetching repositories:", error);
+        return { error: "Failed to fetch repositories", repositories: [] };
+      }
     }
   }
 

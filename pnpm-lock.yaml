@@ -400,6 +400,9 @@ importers:
       '@nucel.cloud/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
+      '@nucel.cloud/github-app':
+        specifier: workspace:*
+        version: link:../../packages/github-app
       '@nucel/database':
         specifier: workspace:*
         version: link:../../packages/database

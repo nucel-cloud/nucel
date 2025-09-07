@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useFetcher } from "react-router";
 import { Button } from "@nucel.cloud/design-system/components/ui/button";
 import { Card, CardContent } from "@nucel.cloud/design-system/components/ui/card";
 import { Input } from "@nucel.cloud/design-system/components/ui/input";
 import { Badge } from "@nucel.cloud/design-system/components/ui/badge";
-import { FolderGit2, Search, Lock, GitBranch, ChevronRight } from "lucide-react";
+import { FolderGit2, Search, Lock, GitBranch, ChevronRight, RefreshCw } from "lucide-react";
 
 interface Repository {
   id: number;
@@ -27,56 +28,53 @@ interface RepositoryStepProps {
   onComplete: () => void;
 }
 
-// Mock repositories for demo
-const mockRepositories: Repository[] = [
-  {
-    id: 1,
-    name: "my-nextjs-app",
-    full_name: "user/my-nextjs-app",
-    owner: {
-      login: "user",
-      avatar_url: "https://github.com/github.png",
-    },
-    private: false,
-    default_branch: "main",
-    description: "A Next.js application with TypeScript",
-    language: "TypeScript",
-    updated_at: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    name: "sveltekit-blog",
-    full_name: "user/sveltekit-blog",
-    owner: {
-      login: "user",
-      avatar_url: "https://github.com/github.png",
-    },
-    private: true,
-    default_branch: "main",
-    description: "Personal blog built with SvelteKit",
-    language: "JavaScript",
-    updated_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: 3,
-    name: "react-dashboard",
-    full_name: "user/react-dashboard",
-    owner: {
-      login: "user",
-      avatar_url: "https://github.com/github.png",
-    },
-    private: false,
-    default_branch: "main",
-    description: "Admin dashboard built with React and Vite",
-    language: "TypeScript",
-    updated_at: new Date(Date.now() - 172800000).toISOString(),
-  },
-];
-
 export function RepositoryStep({ githubInstallations, onComplete }: RepositoryStepProps) {
+  const fetcher = useFetcher();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
-  const [repositories] = useState<Repository[]>(mockRepositories);
+  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch repositories for all installations
+    if (githubInstallations?.installations?.length > 0) {
+      fetchRepositories();
+    } else {
+      setLoading(false);
+      setError("No GitHub installations found");
+    }
+  }, [githubInstallations]);
+
+  const fetchRepositories = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Call the GitHub webhook server API to get repositories
+      const installationIds = githubInstallations.installations.map((i: any) => i.id);
+      
+      // For now, we'll use a fetcher to get repositories
+      const formData = new FormData();
+      formData.append("actionType", "fetch-repositories");
+      formData.append("installationIds", JSON.stringify(installationIds));
+      fetcher.submit(formData, { method: "post" });
+    } catch (err) {
+      setError("Failed to fetch repositories");
+      setLoading(false);
+    }
+  };
+
+  // Handle fetcher response
+  useEffect(() => {
+    if (fetcher.data && 'repositories' in fetcher.data) {
+      setRepositories(fetcher.data.repositories);
+      setLoading(false);
+    } else if (fetcher.data && 'error' in fetcher.data) {
+      setError(fetcher.data.error);
+      setLoading(false);
+    }
+  }, [fetcher.data]);
 
   const filteredRepos = repositories.filter((repo) => {
     const query = searchQuery.toLowerCase();
@@ -121,7 +119,20 @@ export function RepositoryStep({ githubInstallations, onComplete }: RepositorySt
       </div>
 
       <div className="space-y-2 max-h-96 overflow-y-auto">
-        {filteredRepos.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-8">
+            <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Loading repositories...</p>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-red-500 mb-2">{error}</p>
+            <Button variant="outline" size="sm" onClick={fetchRepositories}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        ) : filteredRepos.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">
               {searchQuery ? "No repositories match your search" : "No repositories found"}

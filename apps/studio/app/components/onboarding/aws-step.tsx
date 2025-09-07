@@ -42,11 +42,18 @@ export function AWSStep({ accounts, onComplete }: AWSStepProps) {
 
   // Handle fetcher response
   useEffect(() => {
-    if (fetcher.data && 'externalId' in fetcher.data && 'cloudFormationUrl' in fetcher.data) {
-      setExternalId(fetcher.data.externalId);
-      setCloudFormationUrl(fetcher.data.cloudFormationUrl);
+    if (fetcher.data) {
+      if ('externalId' in fetcher.data && 'cloudFormationUrl' in fetcher.data) {
+        // Response from generate-aws-url action
+        setExternalId(fetcher.data.externalId);
+        setCloudFormationUrl(fetcher.data.cloudFormationUrl);
+      } else if ('success' in fetcher.data && fetcher.data.success) {
+        // Response from aws-connect action - account saved successfully
+        setVerifying(false);
+        onComplete();
+      }
     }
-  }, [fetcher.data]);
+  }, [fetcher.data, onComplete]);
 
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -58,18 +65,24 @@ export function AWSStep({ accounts, onComplete }: AWSStepProps) {
     window.open(cloudFormationUrl, "_blank");
   };
 
-  const handleVerifyAndContinue = async () => {
-    if (!roleArn || !accountId) {
+  const handleVerifyAndContinue = () => {
+    if (!roleArn || !accountId || !externalId) {
       alert("Please enter both Role ARN and Account ID");
       return;
     }
 
     setVerifying(true);
-    // TODO: Call action to save AWS account and verify access
-    setTimeout(() => {
-      setVerifying(false);
-      onComplete();
-    }, 2000);
+    
+    // Submit to server action to save AWS account
+    const formData = new FormData();
+    formData.append("actionType", "aws-connect");
+    formData.append("accountId", accountId);
+    formData.append("roleArn", roleArn);
+    formData.append("externalId", externalId);
+    formData.append("region", "us-east-1");
+    formData.append("accountAlias", `AWS Account ${accountId}`);
+    
+    fetcher.submit(formData, { method: "post" });
   };
 
   if (accounts.length > 0) {
