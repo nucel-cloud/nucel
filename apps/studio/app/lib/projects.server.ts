@@ -199,7 +199,7 @@ export async function createGitHubWorkflow(projectId: string, userId: string) {
   // Replace placeholders with actual values
   const replacements = {
     "{{DEFAULT_BRANCH}}": proj.defaultBranch || "main",
-    "{{NODE_VERSION}}": proj.nodeVersion || "20",
+    "{{NODE_VERSION}}": proj.nodeVersion || "22",
     "{{INSTALL_COMMAND}}": proj.installCommand || "npm ci",
     "{{BUILD_COMMAND}}": proj.buildCommand || "npm run build",
     "{{PULUMI_STACK_NAME}}": proj.pulumiStackName || "production",

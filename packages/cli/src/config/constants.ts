@@ -7,11 +7,6 @@ export const CONSTANTS = {
   // S3 bucket for storing Pulumi state (prefix with project name for uniqueness)
   PULUMI_STATE_BUCKET_PREFIX: 'nucel-pulumi-state',
 
-  FRAMEWORK_OUTPUT_DIRECTORIES: {
-    nextjs: '.open-next',
-    sveltekit: '.svelte-kit-aws',
-    'react-router': '.nucel-build', // Nucel adapter output directory
-  } as const,
   
   DEFAULT_BUILD_COMMAND: 'npm run build',
   

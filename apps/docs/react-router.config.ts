@@ -1,17 +1,8 @@
 import type { Config } from '@react-router/dev/config';
 import { glob } from 'node:fs/promises';
 import { createGetUrl, getSlugs } from 'fumadocs-core/source';
-import reactRouterNucelAwsAdapter from '@nucel.cloud/pulumi-react-router-aws/adapter';
 
 const getUrl = createGetUrl('/docs');
-
-
-const adapter = reactRouterNucelAwsAdapter({
-  out: '.nucel-build',
-  polyfill: true,
-  precompress: false,
-});
-
 
 export default {
   ssr: true,
@@ -31,10 +22,5 @@ export default {
   },
   async buildEnd({ buildManifest }) {
     console.log('Running Nucel adapter...');
-    await adapter.build({
-      serverBuildFile: 'build/server/index.js',
-      buildDirectory: 'build/client',
-      routes: buildManifest?.routes || {},
-    });
   },
 } satisfies Config;

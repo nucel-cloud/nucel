@@ -1,6 +1,6 @@
 {
   "name": "@nucel.cloud/cli",
-  "version": "0.1.3",
+  "version": "0.1.7",
   "description": "The open-source deployment platform for modern web apps",
   "type": "module",
   "bin": {

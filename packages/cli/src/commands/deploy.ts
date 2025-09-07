@@ -1,8 +1,8 @@
 import { InlineProgramArgs, LocalWorkspace } from "@pulumi/pulumi/automation/index.js";
 import chalk from 'chalk';
 import ora from 'ora';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import path, { join } from 'path';
 import { buildProject } from '../utils/build.js';
 import { createNextJsProgram } from '../programs/nextjs.js';
 import { createSvelteKitProgram } from '../programs/sveltekit.js';
@@ -22,6 +22,7 @@ export interface DeployOptions {
   debug?: boolean;
   build?: boolean;
   skipBuild?: boolean;
+  buildCommand?: string;
   backend?: 'local' | 's3' | 'auto';
 }
 
@@ -133,7 +134,15 @@ export async function deploy(options: DeployOptions) {
       }
     } else if (backend === 'local' || backend === 'auto') {
       // Use local backend
-      backendUrl = "file://~/.nucel/pulumi";
+      const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+      const localStateDir = path.join(homeDir, '.nucel', 'pulumi');
+      
+      // Ensure local state directory exists
+      if (!existsSync(localStateDir)) {
+        mkdirSync(localStateDir, { recursive: true });
+      }
+      
+      backendUrl = `file://${localStateDir}?no_tmp_dir=true`;
       
       if (verbose || debug) {
         console.log(chalk.gray(`Using local backend: ${backendUrl}`));

@@ -3,13 +3,22 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { deploy } from './commands/deploy.js';
 import { handleError } from './utils/errors.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
+
+// Always show version when running any command
+console.log(chalk.gray(`Nucel CLI v${packageJson.version}\n`));
 
 const program = new Command();
 
 program
   .name('nucel')
   .description('Deploy modern web apps to AWS')
-  .version('0.1.0')
+  .version(packageJson.version)
   .option('-v, --verbose', 'Enable verbose output')
   .option('-d, --debug', 'Enable debug output (includes verbose)');
 
