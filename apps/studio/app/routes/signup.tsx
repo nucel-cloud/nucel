@@ -44,7 +44,7 @@ export default function SignUp({ loaderData }: Route.ComponentProps) {
   const [error, setError] = useState<string | null>(loaderData?.error || null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const redirectTo = searchParams.get("redirectTo") || "/dashboard";
+  const redirectTo = searchParams.get("redirectTo") || "/onboarding";
   const isSubmitting = navigation.state === "submitting";
 
   const handleSubmit = async (e: React.FormEvent) => {
