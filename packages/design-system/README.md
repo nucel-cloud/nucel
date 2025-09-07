@@ -1,4 +1,4 @@
-# 🎨 @repo/design-system
+# 🎨 @nucel.cloud/design-system
 
 A modern, comprehensive React design system built on top of shadcn/ui components with custom Kibo UI components. This package provides a complete set of accessible, theme-aware UI components for building beautiful and consistent user interfaces.
 
@@ -19,7 +19,7 @@ Since this is a private workspace package, it's already linked in your monorepo.
 ```json
 {
   "dependencies": {
-    "@repo/design-system": "workspace:*"
+    "@nucel.cloud/design-system": "workspace:*"
   }
 }
 ```
@@ -31,7 +31,7 @@ Since this is a private workspace package, it's already linked in your monorepo.
 The design system requires a provider wrapper for themes, authentication, and tooltips:
 
 ```tsx
-import { DesignSystemProvider } from '@repo/design-system';
+import { DesignSystemProvider } from '@nucel.cloud/design-system';
 
 export default function App({ children }) {
   return (
@@ -50,8 +50,8 @@ export default function App({ children }) {
 ### 2. Import and Use Components
 
 ```tsx
-import { Button } from '@repo/design-system/components/ui/button';
-import { Card } from '@repo/design-system/components/ui/card';
+import { Button } from '@nucel.cloud/design-system/components/ui/button';
+import { Card } from '@nucel.cloud/design-system/components/ui/card';
 
 export function MyComponent() {
   return (
@@ -119,7 +119,7 @@ Special advanced components for complex use cases:
 
 #### 📝 Rich Text Editor
 ```tsx
-import { Editor } from '@repo/design-system/components/ui/kibo-ui/editor';
+import { Editor } from '@nucel.cloud/design-system/components/ui/kibo-ui/editor';
 
 <Editor
   content={content}
@@ -138,7 +138,7 @@ Features:
 
 #### 📋 Kanban Board
 ```tsx
-import { Kanban } from '@repo/design-system/components/ui/kibo-ui/kanban';
+import { Kanban } from '@nucel.cloud/design-system/components/ui/kibo-ui/kanban';
 
 <Kanban
   columns={columns}
@@ -149,7 +149,7 @@ import { Kanban } from '@repo/design-system/components/ui/kibo-ui/kanban';
 
 #### 📊 Gantt Chart
 ```tsx
-import { Gantt } from '@repo/design-system/components/ui/kibo-ui/gantt';
+import { Gantt } from '@nucel.cloud/design-system/components/ui/kibo-ui/gantt';
 
 <Gantt
   tasks={tasks}
@@ -159,7 +159,7 @@ import { Gantt } from '@repo/design-system/components/ui/kibo-ui/gantt';
 
 #### 📢 Announcement Banner
 ```tsx
-import { Announcement } from '@repo/design-system/components/ui/kibo-ui/announcement';
+import { Announcement } from '@nucel.cloud/design-system/components/ui/kibo-ui/announcement';
 
 <Announcement
   title="New Feature!"
@@ -170,7 +170,7 @@ import { Announcement } from '@repo/design-system/components/ui/kibo-ui/announce
 
 #### 🏷️ Tag Management
 ```tsx
-import { Tags } from '@repo/design-system/components/ui/kibo-ui/tags';
+import { Tags } from '@nucel.cloud/design-system/components/ui/kibo-ui/tags';
 
 <Tags
   tags={tags}
@@ -181,7 +181,7 @@ import { Tags } from '@repo/design-system/components/ui/kibo-ui/tags';
 
 #### 📋 Advanced List
 ```tsx
-import { List } from '@repo/design-system/components/ui/kibo-ui/list';
+import { List } from '@nucel.cloud/design-system/components/ui/kibo-ui/list';
 
 <List
   items={items}
@@ -236,7 +236,7 @@ function ThemeToggle() {
 Merge Tailwind classes with proper precedence:
 
 ```tsx
-import { cn } from '@repo/design-system/lib/utils';
+import { cn } from '@nucel.cloud/design-system/lib/utils';
 
 <div className={cn('p-4 bg-white', isDark && 'bg-black', className)} />
 ```
@@ -245,7 +245,7 @@ import { cn } from '@repo/design-system/lib/utils';
 Display errors as toast notifications:
 
 ```tsx
-import { handleError } from '@repo/design-system/lib/utils';
+import { handleError } from '@nucel.cloud/design-system/lib/utils';
 
 try {
   await saveData();
@@ -258,7 +258,7 @@ try {
 Detect mobile viewport:
 
 ```tsx
-import { useIsMobile } from '@repo/design-system/hooks/use-mobile';
+import { useIsMobile } from '@nucel.cloud/design-system/hooks/use-mobile';
 
 function ResponsiveComponent() {
   const isMobile = useIsMobile();

@@ -2,6 +2,14 @@
   "name": "@nucel.cloud/design-system",
   "version": "0.0.0",
   "private": true,
+  "exports": {
+    ".": "./index.tsx",
+    "./lib/utils": "./lib/utils.ts",
+    "./components/ui/*": "./components/ui/*.tsx",
+    "./hooks/*": "./hooks/*.ts",
+    "./lib/*": "./lib/*.ts",
+    "./providers/*": "./providers/*.tsx"
+  },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"

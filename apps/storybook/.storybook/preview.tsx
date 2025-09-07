@@ -1,6 +1,5 @@
 import { Toaster } from "@nucel.cloud/design-system/components/ui/sonner";
 import { TooltipProvider } from "@nucel.cloud/design-system/components/ui/tooltip";
-import { ThemeProvider } from "@nucel.cloud/design-system/providers/theme";
 import { withThemeByClassName } from "@storybook/addon-themes";
 import type { Preview } from "@storybook/react";
 
@@ -38,12 +37,10 @@ const preview: Preview = {
     (Story) => {
       return (
         <div className="bg-background">
-          <ThemeProvider>
-            <TooltipProvider>
-              <Story />
-            </TooltipProvider>
-            <Toaster />
-          </ThemeProvider>
+          <TooltipProvider>
+            <Story />
+          </TooltipProvider>
+          <Toaster />
         </div>
       );
     },
