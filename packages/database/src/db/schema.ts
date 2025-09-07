@@ -7,6 +7,7 @@ import {
   primaryKey,
   varchar,
   serial,
+  bigint,
 } from "drizzle-orm/pg-core";
 
 // Better Auth Schema Tables
@@ -180,17 +181,29 @@ export const project = pgTable("project", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   githubRepo: text("github_repo").notNull(), // owner/repo format
+  githubRepoId: integer("github_repo_id"), // GitHub repository ID
   githubInstallationId: integer("github_installation_id")
     .references(() => githubInstallation.installationId),
   awsAccountId: text("aws_account_id")
     .references(() => awsAccount.id),
   defaultBranch: text("default_branch").notNull().default("main"),
-  framework: text("framework"), // 'nextjs', 'sveltekit', 'react', etc.
+  framework: text("framework"), // 'nextjs', 'sveltekit', 'react', 'react-router' etc.
   buildCommand: text("build_command"),
   outputDirectory: text("output_directory"),
   installCommand: text("install_command"),
-  envVars: text("env_vars"), // Encrypted JSON
+  nodeVersion: text("node_version").default("20"),
+  envVars: text("env_vars"), // Encrypted JSON for runtime
+  buildEnvVars: text("build_env_vars"), // Encrypted JSON for build time
   domains: text("domains"), // JSON array of custom domains
+  
+  // GitHub Actions configuration
+  githubSecretsConfigured: boolean("github_secrets_configured").default(false),
+  workflowFileCreated: boolean("workflow_file_created").default(false),
+  
+  // Deployment configuration
+  pulumiStackName: text("pulumi_stack_name").default("production"),
+  awsRegion: text("aws_region").default("us-east-1"),
+  
   status: text("status").notNull().default("active"), // 'active', 'paused', 'deleted'
   lastDeploymentId: text("last_deployment_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -203,21 +216,40 @@ export const deployment = pgTable("deployment", {
   projectId: text("project_id")
     .notNull()
     .references(() => project.id, { onDelete: "cascade" }),
+  
+  // Git information
   commitSha: text("commit_sha").notNull(),
   commitMessage: text("commit_message"),
   commitAuthor: text("commit_author"),
   branch: text("branch").notNull(),
+  pullRequestNumber: integer("pull_request_number"), // For PR previews
+  
+  // Deployment type
+  deploymentType: text("deployment_type").notNull().default("commit"), // 'commit', 'pull_request', 'manual', 'rollback'
+  environment: text("environment").notNull().default("production"), // 'production', 'preview', 'staging'
+  
+  // GitHub Actions information
+  githubRunId: bigint("github_run_id", { mode: "number" }),
+  githubRunNumber: integer("github_run_number"),
+  
+  // Status and URLs
   status: text("status").notNull().default("pending"), // 'pending', 'building', 'deploying', 'ready', 'failed', 'cancelled'
-  buildLogs: text("build_logs"),
-  deploymentUrl: text("deployment_url"),
-  lambdaFunctionArn: text("lambda_function_arn"),
-  apiGatewayUrl: text("api_gateway_url"),
-  cloudfrontDistributionId: text("cloudfront_distribution_id"),
-  s3BucketName: text("s3_bucket_name"),
+  deploymentUrl: text("deployment_url"), // The main URL where it's deployed
+  previewUrl: text("preview_url"), // For PR previews
+  
+  // Pulumi stack information
+  pulumiStackName: text("pulumi_stack_name"),
+  pulumiOutputs: text("pulumi_outputs"), // JSON of stack outputs from Pulumi
+  
+  // Metrics
   buildDuration: integer("build_duration"), // in seconds
   deployDuration: integer("deploy_duration"), // in seconds
+  
+  // Logs and errors
+  buildLogs: text("build_logs"),
   error: text("error"),
-  metadata: text("metadata"), // JSON for additional data
+  
+  metadata: text("metadata"), // JSON for any additional data
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
 });
