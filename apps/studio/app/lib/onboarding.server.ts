@@ -95,6 +95,15 @@ export async function updateOnboardingStep(userId: string, step: OnboardingStep)
       updates.currentStep = "complete";
       updates.completedAt = new Date();
       break;
+    case "complete":
+      // Ensure all flags are set when marking as complete
+      updates.currentStep = "complete";
+      updates.githubConnected = true;
+      updates.awsConnected = true;
+      updates.repositorySelected = true;
+      updates.projectConfigured = true;
+      updates.completedAt = new Date();
+      break;
   }
 
   await db
@@ -200,19 +209,37 @@ export function generateExternalId(): string {
   return crypto.randomBytes(32).toString("hex");
 }
 
-export function generateCloudFormationUrl(externalId: string, region: string = "us-east-1"): string {
+export function generateCloudFormationUrl(
+  externalId: string, 
+  region: string = "us-east-1",
+  githubOrg?: string
+): string {
   // Use CloudFormation template URL from S3
   const templateUrl = process.env.CLOUDFORMATION_TEMPLATE_URL || 
     "https://nucel-cloudformation-templates.s3.amazonaws.com/nucel-aws-integration.yaml";
   
   const stackName = `nucel-integration-${Date.now()}`;
   
+  // Determine deployment mode based on environment
+  const deploymentMode = process.env.NUCEL_DEPLOYMENT_MODE || "SelfHosted";
+  
   // Don't encode the URL in URLSearchParams - it will handle encoding
   const params = new URLSearchParams({
     templateURL: templateUrl,
     stackName: stackName,
     param_ExternalId: externalId,
+    param_DeploymentMode: deploymentMode,
   });
+  
+  // Add GitHub organization if provided
+  if (githubOrg) {
+    params.append("param_GitHubOrganization", githubOrg);
+  }
+  
+  // Add Nucel Account ID for SaaS mode
+  if (deploymentMode === "SaaS" && process.env.NUCEL_AWS_ACCOUNT_ID) {
+    params.append("param_NucelAccountId", process.env.NUCEL_AWS_ACCOUNT_ID);
+  }
 
   return `https://console.aws.amazon.com/cloudformation/home?region=${region}#/stacks/create/review?${params}`;
 }

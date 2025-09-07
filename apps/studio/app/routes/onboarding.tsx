@@ -14,7 +14,17 @@ import {
   generateCloudFormationUrl,
   type OnboardingStep 
 } from "~/lib/onboarding.server";
+
+// Type for setup status
+interface SetupStatus {
+  projectCreated: boolean;
+  secretsConfigured: boolean;
+  workflowCreated: boolean;
+}
+import { createProject, setupGitHubSecrets, createGitHubWorkflow } from "~/lib/projects.server";
 import { NucelGitHubApp } from "@nucel.cloud/github-app";
+import { db, onboardingProgress } from "@nucel/database";
+import { eq } from "drizzle-orm";
 import { Button } from "@nucel.cloud/design-system/components/ui/button";
 import { Card, CardContent } from "@nucel.cloud/design-system/components/ui/card";
 import { Progress } from "@nucel.cloud/design-system/components/ui/progress";
@@ -75,8 +85,129 @@ export async function action({ request }: Route.ActionArgs) {
   switch (actionType) {
     case "complete-step": {
       const step = formData.get("step") as OnboardingStep;
+      let setupStatus: SetupStatus | null = null;
+      
+      // Save additional data based on the step
+      if (step === "repository") {
+        const repositoryId = formData.get("repositoryId");
+        const repositoryName = formData.get("repositoryName");
+        
+        // Store repository selection in session or temporary storage
+        // We'll create the project when configure step is completed
+        const progress = await getOrCreateOnboardingProgress(user.id);
+        const metadata = progress.metadata || {};
+        metadata.selectedRepository = {
+          id: repositoryId,
+          name: repositoryName,
+        };
+        
+        // Update onboarding progress with selected repository
+        await db
+          .update(onboardingProgress)
+          .set({ 
+            metadata: JSON.stringify(metadata),
+            updatedAt: new Date(),
+          })
+          .where(eq(onboardingProgress.userId, user.id));
+          
+      } else if (step === "configure") {
+        const projectName = formData.get("projectName");
+        const framework = formData.get("framework");
+        const buildCommand = formData.get("buildCommand");
+        const outputDirectory = formData.get("outputDirectory");
+        const installCommand = formData.get("installCommand");
+        const nodeVersion = formData.get("nodeVersion") || "20";
+        
+        // Get the selected repository from progress metadata
+        const progress = await getOrCreateOnboardingProgress(user.id);
+        const metadata = progress.metadata || {};
+        const selectedRepo = metadata.selectedRepository;
+        
+        if (!selectedRepo) {
+          throw new Error("No repository selected");
+        }
+        
+        // Get GitHub installation and AWS account
+        const githubInstalls = await getUserGitHubInstallations(user.id);
+        const awsAccounts = await getUserAWSAccounts(user.id);
+        
+        if (!githubInstalls.installations.length || !awsAccounts.length) {
+          throw new Error("GitHub or AWS not configured");
+        }
+        
+        // Store project data in metadata for complete step
+        metadata.projectData = {
+          id: String(projectName),
+          name: String(projectName),
+          repository: String(selectedRepo.name),
+        };
+        
+        // Create the project
+        const projectId = await createProject({
+          userId: user.id,
+          name: String(projectName),
+          repository: String(selectedRepo.name),
+          repositoryId: Number(selectedRepo.id),
+          githubInstallationId: githubInstalls.installations[0].id,
+          awsAccountId: awsAccounts[0].id,
+          framework: String(framework),
+          buildCommand: buildCommand ? String(buildCommand) : undefined,
+          outputDirectory: outputDirectory ? String(outputDirectory) : undefined,
+          installCommand: installCommand ? String(installCommand) : undefined,
+          nodeVersion: String(nodeVersion),
+        });
+        
+        // Setup GitHub secrets and workflow file
+        setupStatus = {
+          projectCreated: true,
+          secretsConfigured: false,
+          workflowCreated: false,
+        };
+        
+        // Try to set up secrets
+        try {
+          await setupGitHubSecrets(projectId, user.id);
+          setupStatus.secretsConfigured = true;
+        } catch (secretsError) {
+          console.error("Error setting up GitHub secrets:", secretsError);
+          // Continue to try workflow even if secrets fail
+        }
+        
+        // Try to create workflow file
+        try {
+          await createGitHubWorkflow(projectId, user.id);
+          setupStatus.workflowCreated = true;
+        } catch (workflowError) {
+          console.error("Error creating workflow file:", workflowError);
+        }
+        
+        // Update metadata with project data
+        await db
+          .update(onboardingProgress)
+          .set({ 
+            metadata: JSON.stringify(metadata),
+            updatedAt: new Date(),
+          })
+          .where(eq(onboardingProgress.userId, user.id));
+        
+        // If neither secrets nor workflow were created, return with warning
+        if (!setupStatus.secretsConfigured || !setupStatus.workflowCreated) {
+          return {
+            success: true,
+            setupStatus,
+            warning: "Project created! However, GitHub Actions setup was incomplete. Please ensure the GitHub App has 'Secrets' and 'Contents' write permissions, then configure manually from project settings.",
+          };
+        }
+      }
+      
       await updateOnboardingStep(user.id, step);
-      break;
+      
+      // Return setupStatus if it exists (from configure step)
+      if (step === "configure" && setupStatus) {
+        return { success: true, setupStatus };
+      }
+      
+      return { success: true };
     }
 
     case "github-install": {
@@ -130,8 +261,93 @@ export async function action({ request }: Route.ActionArgs) {
     case "generate-aws-url": {
       const externalId = generateExternalId();
       const region = formData.get("region") as string || "us-east-1";
-      const url = generateCloudFormationUrl(externalId, region);
+      
+      // Get GitHub installation to get the organization/username
+      const githubInstalls = await getUserGitHubInstallations(user.id);
+      const githubOrg = githubInstalls.installations[0]?.account.login;
+      
+      const url = generateCloudFormationUrl(externalId, region, githubOrg);
       return { externalId, cloudFormationUrl: url };
+    }
+
+    case "check-workflow": {
+      const repository = formData.get("repository") as string;
+      
+      if (!repository) {
+        return { workflowStatus: "waiting" };
+      }
+      
+      try {
+        // Get GitHub installation for this repository
+        const [owner, repo] = repository.split("/");
+        const installations = await getUserGitHubInstallations(user.id);
+        
+        if (installations.installations.length === 0) {
+          return { workflowStatus: "waiting" };
+        }
+        
+        // Initialize GitHub App
+        const githubApp = new NucelGitHubApp({
+          appId: process.env.GITHUB_APP_ID!,
+          privateKey: process.env.GITHUB_APP_PRIVATE_KEY!,
+          webhookSecret: process.env.GITHUB_WEBHOOK_SECRET!,
+        });
+        
+        // Check for workflow runs - specifically for Nucel deployment workflow
+        const octokit = await githubApp.getInstallationOctokit(installations.installations[0].id);
+        const { data: runs } = await octokit.rest.actions.listWorkflowRunsForRepo({
+          owner,
+          repo,
+          workflow_id: "nucel-deploy.yml", // Only check our specific workflow
+          per_page: 5, // Get a few recent runs in case the latest isn't ours
+        });
+        
+        if (runs.workflow_runs.length === 0) {
+          return { workflowStatus: "waiting" };
+        }
+        
+        const latestRun = runs.workflow_runs[0];
+        
+        console.log(`[Workflow Check] Status: ${latestRun.status}, Conclusion: ${latestRun.conclusion}`);
+        
+        if (latestRun.status === "completed") {
+          if (latestRun.conclusion === "success") {
+            // Try to get deployment URL from deployment records
+            const deployments = await db
+              .select()
+              .from(deployment)
+              .where(eq(deployment.commitSha, latestRun.head_sha))
+              .limit(1);
+            
+            return { 
+              workflowStatus: "success",
+              deploymentUrl: deployments[0]?.deploymentUrl || null,
+              workflowUrl: latestRun.html_url,
+            };
+          } else if (latestRun.conclusion === "failure" || latestRun.conclusion === "cancelled" || latestRun.conclusion === "timed_out") {
+            return { 
+              workflowStatus: "failed",
+              workflowUrl: latestRun.html_url,
+              failureReason: latestRun.conclusion,
+            };
+          } else {
+            // Could be skipped or other status
+            return { workflowStatus: "waiting" };
+          }
+        } else if (latestRun.status === "queued" || latestRun.status === "waiting" || latestRun.status === "pending") {
+          return { workflowStatus: "waiting" };
+        } else if (latestRun.status === "in_progress") {
+          return { 
+            workflowStatus: "running",
+            workflowUrl: latestRun.html_url,
+          };
+        } else {
+          return { workflowStatus: "waiting" };
+        }
+      } catch (error) {
+        console.error("Error checking workflow:", error);
+        return { workflowStatus: "waiting" };
+      }
     }
 
     case "fetch-repositories": {
@@ -229,7 +445,7 @@ export default function Onboarding({ loaderData }: Route.ComponentProps) {
           <ConfigureStep onComplete={() => handleStepComplete("configure")} />
         );
       case "complete":
-        return <CompleteStep onGetStarted={() => navigate("/dashboard")} />;
+        return <CompleteStep onGetStarted={() => navigate("/dashboard")} projectData={progress.metadata?.projectData} />;
       default:
         return null;
     }

@@ -93,7 +93,13 @@ export function RepositoryStep({ githubInstallations, onComplete }: RepositorySt
 
   const handleContinue = () => {
     if (selectedRepo) {
-      // TODO: Save selected repository
+      // Submit form to mark repository step as complete
+      const formData = new FormData();
+      formData.append("actionType", "complete-step");
+      formData.append("step", "repository");
+      formData.append("repositoryId", selectedRepo.id.toString());
+      formData.append("repositoryName", selectedRepo.full_name);
+      fetcher.submit(formData, { method: "post" });
       onComplete();
     }
   };

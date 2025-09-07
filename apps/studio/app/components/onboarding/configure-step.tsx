@@ -1,4 +1,5 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { useFetcher } from "react-router";
 import { Button } from "@nucel.cloud/design-system/components/ui/button";
 import { Card, CardContent } from "@nucel.cloud/design-system/components/ui/card";
 import { Input } from "@nucel.cloud/design-system/components/ui/input";
@@ -6,7 +7,7 @@ import { Label } from "@nucel.cloud/design-system/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@nucel.cloud/design-system/components/ui/select";
 import { Textarea } from "@nucel.cloud/design-system/components/ui/textarea";
 import { Alert, AlertDescription } from "@nucel.cloud/design-system/components/ui/alert";
-import { Settings2, Info, Zap } from "lucide-react";
+import { Settings2, Info, Zap, Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 interface ConfigureStepProps {
   onComplete: () => void;
@@ -23,12 +24,24 @@ const frameworks = [
 ];
 
 export function ConfigureStep({ onComplete }: ConfigureStepProps) {
+  const fetcher = useFetcher();
   const [projectName, setProjectName] = useState("");
   const [framework, setFramework] = useState("react-router");
   const [buildCommand, setBuildCommand] = useState("npm run build");
   const [outputDirectory, setOutputDirectory] = useState("build");
   const [installCommand, setInstallCommand] = useState("npm install");
   const [envVars, setEnvVars] = useState("");
+  const [setupProgress, setSetupProgress] = useState<{
+    creating: boolean;
+    secrets: boolean;
+    workflow: boolean;
+    completed: boolean;
+  }>({
+    creating: false,
+    secrets: false,
+    workflow: false,
+    completed: false,
+  });
 
   const handleFrameworkChange = (value: string) => {
     setFramework(value);
@@ -39,14 +52,48 @@ export function ConfigureStep({ onComplete }: ConfigureStepProps) {
     }
   };
 
-  const handleDeploy = () => {
+  const handleDeploy = async () => {
     if (!projectName) {
       alert("Please enter a project name");
       return;
     }
-    // TODO: Save configuration and trigger first deployment
-    onComplete();
+    
+    // Show progress
+    setSetupProgress({ creating: true, secrets: false, workflow: false, completed: false });
+    
+    // Submit form to mark configure step as complete
+    const formData = new FormData();
+    formData.append("actionType", "complete-step");
+    formData.append("step", "configure");
+    formData.append("projectName", projectName);
+    formData.append("framework", framework);
+    formData.append("buildCommand", buildCommand);
+    formData.append("outputDirectory", outputDirectory);
+    formData.append("installCommand", installCommand);
+    formData.append("envVars", envVars);
+    fetcher.submit(formData, { method: "post" });
   };
+
+  // Watch for fetcher state changes to update progress
+  React.useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      // Always update progress based on actual setup status
+      const status = fetcher.data.setupStatus;
+      if (status) {
+        setSetupProgress({
+          creating: status.projectCreated,
+          secrets: status.secretsConfigured,
+          workflow: status.workflowCreated,
+          completed: true,
+        });
+        
+        // Wait longer if there's a warning so user can see what failed
+        setTimeout(() => {
+          onComplete();
+        }, fetcher.data.warning ? 4000 : 1500);
+      }
+    }
+  }, [fetcher.state, fetcher.data, onComplete]);
 
   return (
     <div className="space-y-6">
@@ -151,13 +198,84 @@ export function ConfigureStep({ onComplete }: ConfigureStepProps) {
         </AlertDescription>
       </Alert>
 
+      {/* Show setup progress if deploying */}
+      {(setupProgress.creating || fetcher.state !== "idle") && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              {setupProgress.completed ? (
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+              ) : setupProgress.creating ? (
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+              ) : (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              )}
+              <span className={setupProgress.creating ? "text-green-600" : ""}>
+                Creating project...
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              {setupProgress.secrets ? (
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+              ) : setupProgress.creating ? (
+                fetcher.data?.warning ? (
+                  <XCircle className="w-5 h-5 text-yellow-500" />
+                ) : (
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                )
+              ) : (
+                <div className="w-5 h-5 rounded-full border-2 border-muted" />
+              )}
+              <span className={setupProgress.secrets ? "text-green-600" : ""}>
+                Setting up GitHub secrets...
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              {setupProgress.workflow ? (
+                <CheckCircle2 className="w-5 h-5 text-green-500" />
+              ) : setupProgress.secrets ? (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              ) : (
+                <div className="w-5 h-5 rounded-full border-2 border-muted" />
+              )}
+              <span className={setupProgress.workflow ? "text-green-600" : ""}>
+                Creating deployment workflow...
+              </span>
+            </div>
+
+            {fetcher.data?.warning && (
+              <Alert className="mt-3">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  {fetcher.data.warning}
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex justify-between">
-        <Button variant="outline" disabled>
+        <Button variant="outline" disabled={fetcher.state !== "idle"}>
           Back
         </Button>
-        <Button onClick={handleDeploy} disabled={!projectName}>
-          <Zap className="w-4 h-4 mr-2" />
-          Deploy Project
+        <Button 
+          onClick={handleDeploy} 
+          disabled={!projectName || fetcher.state !== "idle"}
+        >
+          {fetcher.state !== "idle" ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Setting up...
+            </>
+          ) : (
+            <>
+              <Zap className="w-4 h-4 mr-2" />
+              Deploy Project
+            </>
+          )}
         </Button>
       </div>
     </div>
