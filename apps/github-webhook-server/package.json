@@ -19,8 +19,10 @@
   "dependencies": {
     "@hono/node-server": "^1.19.1",
     "@nucel.cloud/github-app": "workspace:*",
+    "@nucel/database": "workspace:*",
     "dotenv": "^16.4.5",
     "hono": "^4.9.5",
+    "nanoid": "^5.0.9",
     "zod": "catalog:"
   },
   "devDependencies": {
