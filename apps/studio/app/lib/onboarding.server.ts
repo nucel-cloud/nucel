@@ -201,9 +201,9 @@ export function generateExternalId(): string {
 }
 
 export function generateCloudFormationUrl(externalId: string, region: string = "us-east-1"): string {
-  // Use CloudFormation template URL - GitHub raw URL by default, or custom from env
+  // Use CloudFormation template URL from S3
   const templateUrl = process.env.CLOUDFORMATION_TEMPLATE_URL || 
-    "https://raw.githubusercontent.com/nucel-cloud/nucel/feat/onboard/apps/studio/app/templates/nucel-aws-integration.yaml";
+    "https://nucel-cloudformation-templates.s3.amazonaws.com/nucel-aws-integration.yaml";
   
   const stackName = `nucel-integration-${Date.now()}`;
   
