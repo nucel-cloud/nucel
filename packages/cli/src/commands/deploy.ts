@@ -21,6 +21,7 @@ export interface DeployOptions {
   debug?: boolean;
   build?: boolean;
   skipBuild?: boolean;
+  backend?: 'local' | 's3' | 'auto';
 }
 
 export async function deploy(options: DeployOptions) {
@@ -107,7 +108,48 @@ export async function deploy(options: DeployOptions) {
   try {
     process.env.PULUMI_CONFIG_PASSPHRASE = process.env.PULUMI_CONFIG_PASSPHRASE || CONSTANTS.PULUMI_CONFIG_PASSPHRASE;
     
-    const pulumiStack = await LocalWorkspace.createOrSelectStack(args);
+    // Determine backend based on options or environment
+    const backend = options.backend || 'auto';
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+    const awsRegion = config.aws.region || process.env.AWS_REGION || CONSTANTS.DEFAULT_AWS_REGION;
+    
+    let backendUrl: string;
+    
+    if (backend === 's3' || (backend === 'auto' && isCI && process.env.AWS_ACCESS_KEY_ID)) {
+      // Use S3 backend
+      // In CI, we can get the account ID from the AWS credentials
+      // Otherwise use project name as suffix for uniqueness
+      const bucketSuffix = process.env.AWS_ACCOUNT_ID || projectName.toLowerCase();
+      const bucketName = `${CONSTANTS.PULUMI_STATE_BUCKET_PREFIX}-${bucketSuffix}`;
+      backendUrl = `s3://${bucketName}?region=${awsRegion}`;
+      
+      if (verbose || debug) {
+        console.log(chalk.gray(`Using S3 backend: ${backendUrl}`));
+      }
+    } else if (backend === 'local' || backend === 'auto') {
+      // Use local backend
+      backendUrl = "file://~/.nucel/pulumi";
+      
+      if (verbose || debug) {
+        console.log(chalk.gray(`Using local backend: ${backendUrl}`));
+      }
+    } else {
+      throw new Error(`Unknown backend: ${backend}`);
+    }
+    
+    const pulumiStack = await LocalWorkspace.createOrSelectStack({
+      ...args,
+      workDir: process.cwd(),
+    }, { 
+      projectSettings: {
+        name: args.projectName,
+        runtime: "nodejs",
+        backend: { url: backendUrl },
+      },
+      envVars: {
+        PULUMI_CONFIG_PASSPHRASE: process.env.PULUMI_CONFIG_PASSPHRASE,
+      },
+    });
     stackSpinner.succeed('Stack initialized');
 
     const region = config.aws.region || process.env.AWS_REGION || CONSTANTS.DEFAULT_AWS_REGION;
