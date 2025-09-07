@@ -2,6 +2,7 @@ import { App, createNodeMiddleware } from 'octokit';
 import type { App as AppType } from 'octokit';
 import type { EmitterWebhookEventName } from '@octokit/webhooks';
 import { z } from 'zod';
+import sodium from 'libsodium-wrappers';
 
 export * from './types.js';
 export * from './handlers/index.js';
@@ -165,6 +166,98 @@ export class NucelGitHubApp {
       environment_url: options.environmentUrl,
       auto_inactive: options.autoInactive,
     });
+  }
+
+  /**
+   * Create or update repository secrets
+   */
+  async createOrUpdateRepoSecrets(options: {
+    installationId: number;
+    owner: string;
+    repo: string;
+    secrets: Record<string, string>;
+  }) {
+    const octokit = await this.getInstallationOctokit(options.installationId);
+    
+    // Initialize libsodium
+    await sodium.ready;
+    
+    // Get repository public key for secret encryption
+    const { data: publicKey } = await octokit.rest.actions.getRepoPublicKey({
+      owner: options.owner,
+      repo: options.repo,
+    });
+    
+    // Encrypt and create each secret
+    const results = [];
+    for (const [name, value] of Object.entries(options.secrets)) {
+      // Convert the secret and key to Uint8Array
+      const messageBytes = sodium.from_string(value);
+      const keyBytes = sodium.from_base64(publicKey.key, sodium.base64_variants.ORIGINAL);
+      
+      // Encrypt using libsodium
+      const encryptedBytes = sodium.crypto_box_seal(messageBytes, keyBytes);
+      
+      // Convert to base64
+      const encryptedValue = sodium.to_base64(encryptedBytes, sodium.base64_variants.ORIGINAL);
+      
+      const result = await octokit.rest.actions.createOrUpdateRepoSecret({
+        owner: options.owner,
+        repo: options.repo,
+        secret_name: name,
+        encrypted_value: encryptedValue,
+        key_id: publicKey.key_id,
+      });
+      
+      results.push({ name, status: result.status });
+    }
+    
+    return results;
+  }
+
+  /**
+   * Create or update workflow file
+   */
+  async createOrUpdateWorkflowFile(options: {
+    installationId: number;
+    owner: string;
+    repo: string;
+    path: string;
+    content: string;
+    message: string;
+  }) {
+    const octokit = await this.getInstallationOctokit(options.installationId);
+    
+    // Try to get existing file first
+    let existingSha: string | undefined;
+    try {
+      const { data: existingFile } = await octokit.rest.repos.getContent({
+        owner: options.owner,
+        repo: options.repo,
+        path: options.path,
+      });
+      
+      if ('sha' in existingFile) {
+        existingSha = existingFile.sha;
+      }
+    } catch (error: any) {
+      // File doesn't exist, which is fine
+      if (error.status !== 404) {
+        throw error;
+      }
+    }
+    
+    // Create or update the file
+    const result = await octokit.rest.repos.createOrUpdateFileContents({
+      owner: options.owner,
+      repo: options.repo,
+      path: options.path,
+      message: options.message,
+      content: Buffer.from(options.content).toString('base64'),
+      sha: existingSha,
+    });
+    
+    return result.data;
   }
 
   /**
