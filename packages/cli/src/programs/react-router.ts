@@ -1,5 +1,6 @@
 import * as pulumi from "@pulumi/pulumi";
 import { ReactRouterNucelAws } from "@nucel.cloud/react-router-aws";
+import { buildReactRouterForAws } from "@nucel.cloud/react-router-aws/adapter";
 import { ProjectConfig } from '../config/types.js';
 import { CONSTANTS } from '../config/constants.js';
 import * as path from 'path';
@@ -12,38 +13,50 @@ export function createReactRouterProgram(config: ProjectConfig) {
     
     const projectName = config.name.replace(/[^a-zA-Z0-9-]/g, '-');
     
-    // Check for React Router adapter output first, then fallback to standard build
-    const possiblePaths = [
-      path.join(projectRoot, '.nucel-build'),        // Nucel adapter output
-      path.join(projectRoot, '.react-router-aws'),   // Legacy adapter output
-      path.join(projectRoot, config.outputDirectory || 'build'), // Standard build
-    ];
-    
+    // First check if Nucel adapter output exists
     let buildPath: string | null = null;
-    for (const possiblePath of possiblePaths) {
-      const serverPath = path.join(possiblePath, 'server');
-      const clientPath = path.join(possiblePath, 'client');
+    const nucelBuildPath = path.join(projectRoot, '.nucel-build');
+    
+    if (fs.existsSync(path.join(nucelBuildPath, 'server')) && 
+        fs.existsSync(path.join(nucelBuildPath, 'client'))) {
+      buildPath = nucelBuildPath;
+      console.log(chalk.gray(`Using React Router AWS build at: ${path.relative(projectRoot, buildPath)}`));
+    } else {
+      // Check if standard React Router build exists
+      const standardBuildPath = path.join(projectRoot, config.outputDirectory || 'build');
+      const serverPath = path.join(standardBuildPath, 'server');
+      const clientPath = path.join(standardBuildPath, 'client');
       
       if (fs.existsSync(serverPath) && fs.existsSync(clientPath)) {
-        buildPath = possiblePath;
-        console.log(chalk.gray(`Using React Router build at: ${path.relative(projectRoot, buildPath)}`));
+        console.log(chalk.cyan('Standard React Router build detected, preparing for AWS Lambda...'));
         
-        // Check if handler.js exists (required for Lambda)
-        const handlerPath = path.join(serverPath, 'handler.js');
-        if (!fs.existsSync(handlerPath)) {
-          console.warn(chalk.yellow('⚠️  Warning: handler.js not found in server directory'));
-          console.warn(chalk.yellow('   Make sure the React Router AWS adapter is properly configured'));
+        // Run the adapter to create .nucel-build
+        try {
+          await buildReactRouterForAws(
+            {
+              serverBuildFile: path.join(serverPath, 'index.js'),
+              buildDirectory: clientPath,
+            },
+            {
+              out: '.nucel-build',
+              polyfill: true,
+              precompress: false,
+            }
+          );
+          buildPath = nucelBuildPath;
+        } catch (error) {
+          throw new Error(
+            `Failed to prepare React Router build for AWS Lambda: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
-        break;
+      } else {
+        throw new Error(
+          `React Router build not found. Expected to find:\n` +
+          `  - ${path.relative(projectRoot, nucelBuildPath)} (with server/ and client/ directories)\n` +
+          `  - OR ${path.relative(projectRoot, standardBuildPath)} (with server/ and client/ directories)\n\n` +
+          `Please run 'npm run build' first.`
+        );
       }
-    }
-    
-    if (!buildPath) {
-      throw new Error(
-        `React Router build not found. Checked:\n` +
-        possiblePaths.map(p => `  - ${path.relative(projectRoot, p)}`).join('\n') +
-        `\n\nMake sure to build your app with the React Router AWS adapter or run 'npm run build' first.`
-      );
     }
     
     const deployment = new ReactRouterNucelAws(`${projectName}-deployment`, {

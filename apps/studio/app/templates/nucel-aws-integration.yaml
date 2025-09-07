@@ -238,6 +238,8 @@ Resources:
               - 's3:GetBucketTagging'
               - 's3:GetBucketEncryption'
               - 's3:PutBucketEncryption'
+              - 's3:PutEncryptionConfiguration'
+              - 's3:GetEncryptionConfiguration'
             Resource:
               - !Sub 'arn:aws:s3:::${StackPrefix}-*'
               - !Sub 'arn:aws:s3:::nucel-pulumi-state-*'
