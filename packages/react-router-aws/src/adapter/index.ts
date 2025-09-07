@@ -148,7 +148,7 @@ export default function reactRouterNucelAwsAdapter(options: ReactRouterNucelAwsA
       
       // Create deployment metadata
       const metadata = {
-        adapter: '@donswayo/pulumi-react-router-aws',
+        adapter: '@nucel.cloud/react-router-aws',
         timestamp: new Date().toISOString(),
         polyfill,
         precompress,
