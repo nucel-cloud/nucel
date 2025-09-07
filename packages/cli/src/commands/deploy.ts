@@ -12,6 +12,7 @@ import type { ProjectConfig } from '../config/types.js';
 import { initializePulumiStack, refreshStack, displayPreviewResults, displayDeploymentResults } from '../utils/deployment.js';
 import { CONSTANTS } from '../config/constants.js';
 import { getFrameworkConfig } from '../config/framework-configs.js';
+import { ensureS3BucketExists } from '../utils/s3-backend.js';
 
 export interface DeployOptions {
   stack: string;
@@ -121,6 +122,10 @@ export async function deploy(options: DeployOptions) {
       // Otherwise use project name as suffix for uniqueness
       const bucketSuffix = process.env.AWS_ACCOUNT_ID || projectName.toLowerCase();
       const bucketName = `${CONSTANTS.PULUMI_STATE_BUCKET_PREFIX}-${bucketSuffix}`;
+      
+      // Ensure the S3 bucket exists before using it
+      await ensureS3BucketExists(bucketName, awsRegion);
+      
       backendUrl = `s3://${bucketName}?region=${awsRegion}`;
       
       if (verbose || debug) {
