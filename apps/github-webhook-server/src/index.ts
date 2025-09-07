@@ -4,7 +4,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { NucelGitHubApp } from '@nucel.cloud/github-app';
-import { db, githubInstallation } from '@nucel/database';
+import { db, githubInstallation, project, deployment } from '@nucel/database';
+import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { webhookRoutes } from './routes/webhooks.js';
 import { apiRoutes } from './routes/api.js';
@@ -150,7 +151,47 @@ githubApp.on('installation_repositories', async ({ payload }) => {
 
 githubApp.on('push', async ({ payload }) => {
   console.log(`📌 Push to ${payload.repository.full_name}`);
-  // Handle push events
+  
+  const branch = payload.ref.replace('refs/heads/', '');
+  
+  // Check if this push is to a project's default branch
+  const projects = await db
+    .select()
+    .from(project)
+    .where(
+      and(
+        eq(project.githubRepo, payload.repository.full_name),
+        eq(project.githubInstallationId, payload.installation?.id || 0)
+      )
+    )
+    .limit(1);
+  
+  if (projects.length === 0) {
+    console.log(`[GitHub Webhook] No project found for ${payload.repository.full_name}`);
+    return;
+  }
+  
+  const proj = projects[0];
+  
+  if (branch !== proj.defaultBranch) {
+    console.log(`[GitHub Webhook] Push to non-default branch ${branch}, skipping`);
+    return;
+  }
+  
+  // Create deployment record
+  await db.insert(deployment).values({
+    id: nanoid(),
+    projectId: proj.id,
+    commitSha: payload.after,
+    commitMessage: payload.head_commit?.message || '',
+    branch,
+    status: 'pending',
+    triggeredBy: payload.pusher.name,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  
+  console.log(`[GitHub Webhook] Created deployment for ${payload.repository.full_name}`);
 });
 
 githubApp.on('pull_request', async ({ payload }) => {
