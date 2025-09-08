@@ -36,5 +36,7 @@ yarn-error.log*
 # ui
 dist/
 
+.nucel-build
+
 # IDE
 .idea/
