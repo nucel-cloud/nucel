@@ -1,7 +1,12 @@
-import { writeFileSync, mkdirSync, existsSync, cpSync, readFileSync, statSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, cpSync, readFileSync, statSync, copyFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import type { ReactRouterNucelAwsAdapterOptions, ReactRouterBuildConfig } from './types.js';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Core build function that prepares React Router app for AWS Lambda
@@ -101,14 +106,40 @@ export async function buildReactRouterForAws(
  * Create the Lambda handler file
  */
 async function createLambdaHandler(serverDir: string): Promise<void> {
-  const handlerContent = `
+  // Copy the handler template from the templates directory
+  const templatePath = join(__dirname, '..', '..', 'templates', 'handler.js');
+  const handlerPath = join(serverDir, 'handler.js');
+  
+  // Check if template exists, otherwise use inline version
+  if (existsSync(templatePath)) {
+    copyFileSync(templatePath, handlerPath);
+  } else {
+    // Fallback to inline handler for compatibility
+    const handlerContent = `
 import { createRequestHandler } from '@react-router/architect';
 import * as build from './index.js';
 
-export const handler = createRequestHandler(build, process.env.NODE_ENV);
+const reactRouterHandler = createRequestHandler({
+  build,
+  mode: process.env.NODE_ENV || 'production',
+});
+
+export const handler = async (event, context) => {
+  try {
+    const response = await reactRouterHandler(event, context);
+    return response;
+  } catch (error) {
+    console.error('Handler error:', error);
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Internal server error' }),
+    };
+  }
+};
 `;
-  
-  writeFileSync(join(serverDir, 'handler.js'), handlerContent.trim());
+    writeFileSync(handlerPath, handlerContent.trim());
+  }
 }
 
 /**

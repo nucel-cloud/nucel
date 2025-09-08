@@ -131,179 +131,70 @@ Resources:
         - Key: Purpose
           Value: ServerlessDeployment
 
-  # Policy for Lambda operations
-  LambdaDeploymentPolicy:
+  # Consolidated Policy 1: Core Compute and Storage
+  CoreServicesPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: NucelLambdaDeployment
+      PolicyName: NucelCoreServices
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          # Lambda function operations
+          # All serverless operations with wildcard
           - Effect: Allow
             Action:
-              - 'lambda:CreateFunction'
-              - 'lambda:UpdateFunctionCode'
-              - 'lambda:UpdateFunctionConfiguration'
-              - 'lambda:DeleteFunction'
-              - 'lambda:GetFunction'
-              - 'lambda:GetFunctionConfiguration'
-              - 'lambda:ListFunctions'
-              - 'lambda:InvokeFunction'
-              - 'lambda:PublishVersion'
-              - 'lambda:CreateAlias'
-              - 'lambda:UpdateAlias'
-              - 'lambda:DeleteAlias'
-              - 'lambda:ListVersionsByFunction'
-              - 'lambda:GetPolicy'
-              - 'lambda:PutFunctionConcurrency'
-              - 'lambda:DeleteFunctionConcurrency'
-              - 'lambda:AddPermission'
-              - 'lambda:RemovePermission'
-              - 'lambda:TagResource'
-              - 'lambda:UntagResource'
-              - 'lambda:ListTags'
-              - 'lambda:PutFunctionEventInvokeConfig'
-              - 'lambda:UpdateFunctionEventInvokeConfig'
-              - 'lambda:DeleteFunctionEventInvokeConfig'
-              - 'lambda:CreateFunctionUrlConfig'
-              - 'lambda:UpdateFunctionUrlConfig'
-              - 'lambda:DeleteFunctionUrlConfig'
-              - 'lambda:GetFunctionUrlConfig'
-            Resource:
-              - !Sub 'arn:aws:lambda:*:${AWS::AccountId}:function:${StackPrefix}-*'
-          
-          # Lambda layer operations
-          - Effect: Allow
-            Action:
-              - 'lambda:PublishLayerVersion'
-              - 'lambda:DeleteLayerVersion'
-              - 'lambda:GetLayerVersion'
-              - 'lambda:ListLayers'
-              - 'lambda:ListLayerVersions'
+              - 'lambda:*'
+              - 's3:*'
+              - 'cloudfront:*'
+              - 'dynamodb:*'
             Resource: '*'
       Roles:
         - !Ref NucelDeploymentRole
 
-  # Policy for API Gateway operations
-  ApiGatewayDeploymentPolicy:
+  # Consolidated Policy 2: Networking and CDN Services
+  NetworkingPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: NucelApiGatewayDeployment
+      PolicyName: NucelNetworking
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
+          # API Gateway - all operations
           - Effect: Allow
-            Action:
-              - 'apigateway:*'
-            Resource:
-              - !Sub 'arn:aws:apigateway:*::/restapis'
-              - !Sub 'arn:aws:apigateway:*::/restapis/*'
-              - !Sub 'arn:aws:apigateway:*::/apis'
-              - !Sub 'arn:aws:apigateway:*::/apis/*'
-            Condition:
-              StringLike:
-                'aws:RequestTag/ManagedBy': 'Nucel'
-      Roles:
-        - !Ref NucelDeploymentRole
-
-  # Policy for S3 operations (static assets and deployment artifacts)
-  S3DeploymentPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: NucelS3Deployment
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          # Bucket operations for application and Pulumi state
-          - Effect: Allow
-            Action:
-              - 's3:CreateBucket'
-              - 's3:DeleteBucket'
-              - 's3:ListBucket'
-              - 's3:GetBucketLocation'
-              - 's3:GetBucketPolicy'
-              - 's3:PutBucketPolicy'
-              - 's3:DeleteBucketPolicy'
-              - 's3:GetBucketWebsite'
-              - 's3:PutBucketWebsite'
-              - 's3:DeleteBucketWebsite'
-              - 's3:GetBucketVersioning'
-              - 's3:PutBucketVersioning'
-              - 's3:GetBucketCORS'
-              - 's3:PutBucketCORS'
-              - 's3:GetBucketPublicAccessBlock'
-              - 's3:PutBucketPublicAccessBlock'
-              - 's3:PutBucketTagging'
-              - 's3:GetBucketTagging'
-              - 's3:GetBucketEncryption'
-              - 's3:PutBucketEncryption'
-              - 's3:PutEncryptionConfiguration'
-              - 's3:GetEncryptionConfiguration'
-            Resource:
-              - !Sub 'arn:aws:s3:::${StackPrefix}-*'
-              - !Sub 'arn:aws:s3:::nucel-pulumi-state-*'
-          
-          # Object operations for application and Pulumi state
-          - Effect: Allow
-            Action:
-              - 's3:GetObject'
-              - 's3:PutObject'
-              - 's3:DeleteObject'
-              - 's3:GetObjectVersion'
-              - 's3:ListBucketVersions'
-            Resource:
-              - !Sub 'arn:aws:s3:::${StackPrefix}-*/*'
-              - !Sub 'arn:aws:s3:::nucel-pulumi-state-*/*'
-          
-          # List all buckets (needed for console)
-          - Effect: Allow
-            Action:
-              - 's3:ListAllMyBuckets'
+            Action: 'apigateway:*'
             Resource: '*'
-      Roles:
-        - !Ref NucelDeploymentRole
-
-  # Policy for CloudFront operations
-  CloudFrontDeploymentPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: NucelCloudFrontDeployment
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
+          # Route53 - all operations
           - Effect: Allow
-            Action:
-              - 'cloudfront:CreateDistribution'
-              - 'cloudfront:UpdateDistribution'
-              - 'cloudfront:DeleteDistribution'
-              - 'cloudfront:GetDistribution'
-              - 'cloudfront:GetDistributionConfig'
-              - 'cloudfront:ListDistributions'
-              - 'cloudfront:CreateInvalidation'
-              - 'cloudfront:GetInvalidation'
-              - 'cloudfront:ListInvalidations'
-              - 'cloudfront:TagResource'
-              - 'cloudfront:UntagResource'
-              - 'cloudfront:ListTagsForResource'
-              - 'cloudfront:CreateOriginAccessControl'
-              - 'cloudfront:UpdateOriginAccessControl'
-              - 'cloudfront:DeleteOriginAccessControl'
-              - 'cloudfront:GetOriginAccessControl'
-              - 'cloudfront:ListOriginAccessControls'
+            Action: 'route53:*'
             Resource: '*'
+          # ACM - all operations
+          - Effect: Allow
+            Action: 'acm:*'
+            Resource: '*'
+          # CloudFormation - all operations
+          - Effect: Allow
+            Action: 'cloudformation:*'
+            Resource:
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/${StackPrefix}-*/*'
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/*-deployment-*/*'
+          # SQS - all operations
+          - Effect: Allow
+            Action: 'sqs:*'
+            Resource:
+              - !Sub 'arn:aws:sqs:*:${AWS::AccountId}:${StackPrefix}-*'
+              - !Sub 'arn:aws:sqs:*:${AWS::AccountId}:*-revalidation-*'
+              - !Sub 'arn:aws:sqs:*:${AWS::AccountId}:*-deployment-*'
       Roles:
         - !Ref NucelDeploymentRole
 
-  # Policy for IAM operations (Lambda execution roles)
-  IAMDeploymentPolicy:
+  # Consolidated Policy 3: IAM, Monitoring and Management
+  IAMMonitoringPolicy:
     Type: AWS::IAM::Policy
     Properties:
-      PolicyName: NucelIAMDeployment
+      PolicyName: NucelIAMMonitoring
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          # Role operations for Lambda execution roles
+          # IAM Role operations
           - Effect: Allow
             Action:
               - 'iam:CreateRole'
@@ -322,12 +213,6 @@ Resources:
               - 'iam:TagRole'
               - 'iam:UntagRole'
               - 'iam:ListRoleTags'
-            Resource:
-              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/${StackPrefix}-*'
-          
-          # Policy operations
-          - Effect: Allow
-            Action:
               - 'iam:CreatePolicy'
               - 'iam:DeletePolicy'
               - 'iam:GetPolicy'
@@ -335,30 +220,17 @@ Resources:
               - 'iam:ListPolicyVersions'
               - 'iam:CreatePolicyVersion'
               - 'iam:DeletePolicyVersion'
-            Resource:
-              - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${StackPrefix}-*'
-          
-          # Service-linked role operations
-          - Effect: Allow
-            Action:
               - 'iam:CreateServiceLinkedRole'
-            Resource: '*'
-            Condition:
-              StringEquals:
-                'iam:AWSServiceName':
-                  - 'lambda.amazonaws.com'
-                  - 'apigateway.amazonaws.com'
-      Roles:
-        - !Ref NucelDeploymentRole
-
-  # Policy for CloudWatch Logs operations
-  CloudWatchLogsPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: NucelCloudWatchLogs
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
+              - 'iam:ListInstanceProfilesForRole'
+              - 'iam:AddRoleToInstanceProfile'
+              - 'iam:RemoveRoleFromInstanceProfile'
+            Resource:
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/${StackPrefix}-*'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/*-deployment-*'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${StackPrefix}-*'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/*-deployment-*'
+              - '*'
+          # CloudWatch Logs
           - Effect: Allow
             Action:
               - 'logs:CreateLogGroup'
@@ -378,65 +250,11 @@ Resources:
             Resource:
               - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/${StackPrefix}-*'
               - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/${StackPrefix}-*:*'
-      Roles:
-        - !Ref NucelDeploymentRole
-
-  # Policy for Route53 operations (custom domains)
-  Route53Policy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: NucelRoute53
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - 'route53:ListHostedZones'
-              - 'route53:GetHostedZone'
-              - 'route53:ListResourceRecordSets'
-            Resource: '*'
-          
-          - Effect: Allow
-            Action:
-              - 'route53:ChangeResourceRecordSets'
-            Resource: !Sub 'arn:aws:route53:::hostedzone/*'
-            Condition:
-              'ForAllValues:StringLike':
-                'route53:ChangeResourceRecordSetsNormalizedRecordNames':
-                  - '*.nucel.app'
-                  - '*.nucel.dev'
-      Roles:
-        - !Ref NucelDeploymentRole
-
-  # Policy for ACM operations (SSL certificates)
-  ACMPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: NucelACM
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Action:
-              - 'acm:RequestCertificate'
-              - 'acm:DescribeCertificate'
-              - 'acm:DeleteCertificate'
-              - 'acm:ListCertificates'
-              - 'acm:AddTagsToCertificate'
-              - 'acm:RemoveTagsFromCertificate'
-              - 'acm:ListTagsForCertificate'
-            Resource: '*'
-      Roles:
-        - !Ref NucelDeploymentRole
-
-  # Policy for CloudFormation operations (for managing stacks)
-  CloudFormationPolicy:
-    Type: AWS::IAM::Policy
-    Properties:
-      PolicyName: NucelCloudFormation
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/*-deployment-*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/*-deployment-*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/ecs/*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/ecs/*:*'
+          # CloudFormation
           - Effect: Allow
             Action:
               - 'cloudformation:CreateStack'
@@ -452,8 +270,38 @@ Resources:
               - 'cloudformation:GetTemplate'
             Resource:
               - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/${StackPrefix}-*/*'
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/*-deployment-*/*'
       Roles:
         - !Ref NucelDeploymentRole
+
+  # Consolidated Policy 4: Infrastructure Services (ECS, ECR, VPC, ALB, etc.)
+  InfrastructureServicesPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: NucelInfrastructureServices
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # All infrastructure operations with wildcard
+          - Effect: Allow
+            Action:
+              - 'ecs:*'
+              - 'ecr:*'
+              - 'secretsmanager:*'
+              - 'ssm:*'
+              - 'ec2:*'
+              - 'elasticloadbalancing:*'
+              - 'autoscaling:*'
+              - 'application-autoscaling:*'
+              - 'events:*'
+              - 'scheduler:*'
+              - 'wafv2:*'
+              - 'waf:*'
+              - 'waf-regional:*'
+            Resource: '*'
+      Roles:
+        - !Ref NucelDeploymentRole
+
 
 Outputs:
   RoleArn:

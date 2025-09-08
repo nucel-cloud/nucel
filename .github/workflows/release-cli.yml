@@ -1,0 +1,223 @@
+name: Release CLI Binaries
+
+on:
+  push:
+    tags:
+      - 'cli-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (without v prefix)'
+        required: true
+        type: string
+
+jobs:
+  build-binaries:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - platform: linux
+            arch: x64
+            node-version: node22-linux-x64
+          - platform: linux
+            arch: arm64
+            node-version: node22-linux-arm64
+          - platform: macos
+            arch: x64
+            node-version: node22-macos-x64
+          - platform: macos
+            arch: arm64
+            node-version: node22-macos-arm64
+          - platform: windows
+            arch: x64
+            node-version: node22-win-x64
+          - platform: windows
+            arch: arm64
+            node-version: node22-win-arm64
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Build packages
+        run: |
+          pnpm --filter @nucel.cloud/cli... build
+          
+      - name: Install pkg
+        run: npm install -g @yao-pkg/pkg
+        
+      - name: Create pkg config
+        run: |
+          cd packages/cli
+          cat > pkg.json << EOF
+          {
+            "name": "nucel",
+            "version": "${{ github.event.inputs.version || github.ref_name }}",
+            "bin": "./dist/index.js",
+            "pkg": {
+              "scripts": [
+                "dist/**/*.js"
+              ],
+              "assets": [
+                "templates/**/*",
+                "dist/**/*.json"
+              ],
+              "targets": [
+                "${{ matrix.node-version }}"
+              ],
+              "outputPath": "binaries"
+            }
+          }
+          EOF
+          
+      - name: Package CLI
+        run: |
+          cd packages/cli
+          mkdir -p binaries
+          pkg . --target ${{ matrix.node-version }} --output binaries/nucel-cli-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.platform == 'windows' && '.exe' || '' }}
+          
+      - name: Compress binary
+        run: |
+          cd packages/cli/binaries
+          if [ "${{ matrix.platform }}" = "windows" ]; then
+            zip nucel-cli-${{ matrix.platform }}-${{ matrix.arch }}.zip nucel-cli-${{ matrix.platform }}-${{ matrix.arch }}.exe
+          else
+            tar -czf nucel-cli-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz nucel-cli-${{ matrix.platform }}-${{ matrix.arch }}
+          fi
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: nucel-cli-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            packages/cli/binaries/nucel-cli-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
+            packages/cli/binaries/nucel-cli-${{ matrix.platform }}-${{ matrix.arch }}.zip
+          if-no-files-found: error
+
+  create-release:
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+          
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Create Release Notes
+        run: |
+          cat > release-notes.md << EOF
+          # Nucel CLI ${{ steps.version.outputs.version }}
+          
+          ## Installation
+          
+          ### macOS/Linux
+          
+          Download the appropriate binary for your platform and architecture:
+          
+          \`\`\`bash
+          # macOS Apple Silicon (M1/M2/M3)
+          curl -L https://github.com/nucel-cloud/nucel/releases/download/${{ steps.version.outputs.version }}/nucel-cli-macos-arm64.tar.gz | tar xz
+          sudo mv nucel-cli /usr/local/bin/
+          
+          # macOS Intel
+          curl -L https://github.com/nucel-cloud/nucel/releases/download/${{ steps.version.outputs.version }}/nucel-cli-macos-x64.tar.gz | tar xz
+          sudo mv nucel-cli /usr/local/bin/
+          
+          # Linux x64
+          curl -L https://github.com/nucel-cloud/nucel/releases/download/${{ steps.version.outputs.version }}/nucel-cli-linux-x64.tar.gz | tar xz
+          sudo mv nucel-cli /usr/local/bin/
+          
+          # Linux ARM64
+          curl -L https://github.com/nucel-cloud/nucel/releases/download/${{ steps.version.outputs.version }}/nucel-cli-linux-arm64.tar.gz | tar xz
+          sudo mv nucel-cli /usr/local/bin/
+          \`\`\`
+          
+          ### Windows
+          
+          Download the appropriate ZIP file and extract it to a directory in your PATH.
+          
+          ### Via npm
+          
+          \`\`\`bash
+          npm install -g @nucel.cloud/cli
+          \`\`\`
+          
+          ## Checksums
+          
+          \`\`\`
+          $(cd artifacts && sha256sum */*)
+          \`\`\`
+          EOF
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Nucel CLI ${{ steps.version.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-npm-package:
+    runs-on: ubuntu-latest
+    needs: create-release
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        
+      - name: Build all packages
+        run: pnpm build
+        
+      - name: Publish to npm
+        run: |
+          cd packages/cli
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

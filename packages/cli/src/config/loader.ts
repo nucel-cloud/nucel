@@ -4,7 +4,7 @@ import { config as dotenv } from 'dotenv';
 import { NucelConfig, NucelConfigSchema, ProjectConfig, Framework } from './types.js';
 import { detectFramework } from '../utils/detect-framework.js';
 import { getErrorMessage } from '../utils/errors.js';
-import { getFrameworkDefaults, isAppEnvVar } from './framework-configs.js';
+import { FRAMEWORK_CONFIGS, getFrameworkDefaults, isAppEnvVar } from './framework-configs.js';
 import { CONSTANTS } from './constants.js';
 import chalk from 'chalk';
 
@@ -78,8 +78,14 @@ async function loadEnvironmentVariables(projectRoot: string, framework: string):
     }
   }
   
+  // Only get framework-specific env vars from process.env (e.g., VITE_* for React Router)
+  // Don't pull in all environment variables from CI/CD systems
+  const frameworkConfig = FRAMEWORK_CONFIGS[framework as Framework];
   const appEnvVars = Object.keys(process.env)
-    .filter(key => isAppEnvVar(key, framework as Framework))
+    .filter(key => {
+      // Only include variables that start with framework-specific prefixes
+      return frameworkConfig.envPrefixes.some(prefix => key.startsWith(prefix)) || key === 'NODE_ENV';
+    })
     .reduce((acc, key) => {
       acc[key] = process.env[key]!;
       return acc;
