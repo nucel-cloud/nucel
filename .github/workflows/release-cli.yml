@@ -90,7 +90,7 @@ jobs:
           if-no-files-found: error
 
   create-release:
-    needs: [build-binaries]
+    needs: [build-binaries,publish-npm]
     runs-on: ubuntu-latest
     permissions:
       contents: write
