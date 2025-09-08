@@ -55,12 +55,12 @@ export function createHonoProgram(config: ProjectConfig) {
             minify: true,
             sourcemap: false,
             external: [],
-            streaming: false,
+            streaming: true,
           },
           {
             bundle: true,
             minify: true,
-            streaming: false,
+            streaming: true,
           }
         );
         
