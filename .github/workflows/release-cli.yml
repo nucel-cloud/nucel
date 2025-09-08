@@ -75,7 +75,7 @@ jobs:
         run: |
           cd packages/cli
           mkdir -p binaries
-          pkg . --target ${{ matrix.node-version }} --output binaries/nucel-cli-${{ matrix.platform }}-${{ matrix.arch }}
+          pkg . --target ${{ matrix.node-version }} --output binaries/nucel-cli-${{ matrix.platform }}-${{ matrix.arch }} --options experimental-require-module
           
       - name: Compress binary
         run: |
