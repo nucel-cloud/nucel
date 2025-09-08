@@ -16,6 +16,7 @@ export async function detectFramework(): Promise<Framework> {
     ...packageJson.devDependencies,
   };
 
+  // Check each framework
   for (const [framework, config] of Object.entries(FRAMEWORK_CONFIGS)) {
     if (framework === 'unknown') continue;
     
@@ -24,11 +25,17 @@ export async function detectFramework(): Promise<Framework> {
     const hasDependency = config.dependencies.some(dep => deps[dep]);
     if (!hasDependency) continue;
     
-    const hasConfigFile = config.configFiles.some(configFile => 
-      fs.existsSync(path.join(projectRoot, configFile))
-    );
-    
-    if (hasConfigFile) {
+    // For frameworks with config files, check if they exist
+    if (config.configFiles && config.configFiles.length > 0) {
+      const hasConfigFile = config.configFiles.some(configFile => 
+        fs.existsSync(path.join(projectRoot, configFile))
+      );
+      
+      if (hasConfigFile) {
+        return frameworkKey;
+      }
+    } else {
+      // For frameworks without config files (like Hono), just having the dependency is enough
       return frameworkKey;
     }
   }
