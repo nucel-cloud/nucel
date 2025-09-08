@@ -27,15 +27,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cahce: 'pnpm'
-          
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+          cache: 'pnpm'
           
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -75,7 +75,7 @@ jobs:
         run: |
           cd packages/cli
           mkdir -p binaries
-          pkg . --target ${{ matrix.node-version }} --output binaries/nucel-cli-${{ matrix.platform }}-${{ matrix.arch }} --options experimental-require-module
+          pkg . --target ${{ matrix.node-version }} --output binaries/nucel-cli-${{ matrix.platform }}-${{ matrix.arch }}
           
       - name: Compress binary
         run: |
@@ -90,7 +90,7 @@ jobs:
           if-no-files-found: error
 
   create-release:
-    needs: [build-binaries, publish-npm]
+    needs: [build-binaries]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -166,15 +166,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'pnpm'
-          
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
           
       - name: Publish CLI to npm
         run: pnpm --filter @nucel.cloud/cli publish --access public --no-git-checks
