@@ -33,6 +33,13 @@ export const FRAMEWORK_CONFIGS: Record<Framework, FrameworkConfig> = {
     configFiles: ['react-router.config.ts', 'react-router.config.js'],
     dependencies: ['react-router', '@react-router/dev'],
   },
+  hono: {
+    buildCommand: 'npm run build',
+    outputDirectory: '.nucel-build',
+    envPrefixes: ['HONO_', 'NUCEL_'],
+    configFiles: [],
+    dependencies: ['hono'],
+  },
   unknown: {
     buildCommand: 'npm run build',
     outputDirectory: 'dist',

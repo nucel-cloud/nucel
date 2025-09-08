@@ -32,6 +32,7 @@ export function createCloudFrontDistribution(args: CreateCloudFrontArgs): aws.cl
     parent 
   } = args;
   
+  console.log(`${name}-distribution`)
   // Create CloudFront distribution with performance optimizations
   const distribution = new aws.cloudfront.Distribution(`${name}-distribution`, {
     enabled: true,

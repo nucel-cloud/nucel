@@ -1,7 +1,7 @@
 {
-  "name": "@nucel.cloud/react-router-aws",
-  "version": "0.1.7",
-  "description": "React Router v7 adapter and Pulumi components for deploying to AWS Lambda, CloudFront, and S3",
+  "name": "@nucel.cloud/hono-aws",
+  "version": "0.1.0",
+  "description": "Hono.js adapter and Pulumi components for deploying to AWS Lambda, CloudFront, and S3",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -22,29 +22,47 @@
   "scripts": {
     "build": "tsc && cp -r templates dist/",
     "dev": "tsc --watch",
-    "check-types": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@pulumi/aws": "catalog:",
     "@pulumi/pulumi": "catalog:",
     "archiver": "catalog:",
     "globby": "catalog:",
-    "mime-types": "catalog:"
+    "mime-types": "catalog:",
+    "vite": "catalog:"
   },
   "devDependencies": {
-    "@react-router/dev": "catalog:",
     "@repo/typescript-config": "workspace:*",
     "@types/archiver": "catalog:",
     "@types/mime-types": "catalog:",
     "@types/node": "catalog:",
+    "hono": "^4.7.0",
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "@react-router/dev": "catalog:",
-    "@react-router/node": "catalog:"
+    "hono": "^4.0.0"
   },
   "license": "MIT",
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "keywords": [
+    "hono",
+    "aws",
+    "lambda",
+    "serverless",
+    "pulumi",
+    "cloudfront",
+    "s3",
+    "edge",
+    "nucel"
+  ],
+  "author": "Nucel Cloud",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nucel-cloud/nucel"
+  },
+  "homepage": "https://nucel.cloud"
 }

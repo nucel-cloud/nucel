@@ -1,5 +1,5 @@
 import type { Config } from "@react-router/dev/config";
-import reactRouterNucelAwsAdapter from "@donswayo/pulumi-react-router-aws/adapter";
+import reactRouterNucelAwsAdapter from "@nucel.cloud/react-router-aws/adapter";
 
 const adapter = reactRouterNucelAwsAdapter({
   out: '.nucel-build',
