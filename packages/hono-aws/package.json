@@ -1,0 +1,68 @@
+{
+  "name": "@nucel.cloud/hono-aws",
+  "version": "0.1.0",
+  "description": "Hono.js adapter and Pulumi components for deploying to AWS Lambda, CloudFront, and S3",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./adapter": {
+      "types": "./dist/adapter/index.d.ts",
+      "import": "./dist/adapter/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc && cp -r templates dist/",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@pulumi/aws": "catalog:",
+    "@pulumi/pulumi": "catalog:",
+    "archiver": "catalog:",
+    "globby": "catalog:",
+    "mime-types": "catalog:",
+    "vite": "catalog:"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/archiver": "catalog:",
+    "@types/mime-types": "catalog:",
+    "@types/node": "catalog:",
+    "hono": "^4.7.0",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "hono": "^4.0.0"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "hono",
+    "aws",
+    "lambda",
+    "serverless",
+    "pulumi",
+    "cloudfront",
+    "s3",
+    "edge",
+    "nucel"
+  ],
+  "author": "Nucel Cloud",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nucel-cloud/nucel"
+  },
+  "homepage": "https://nucel.cloud"
+}
