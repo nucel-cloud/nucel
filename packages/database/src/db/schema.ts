@@ -4,7 +4,6 @@ import {
   timestamp,
   boolean,
   integer,
-  primaryKey,
   varchar,
   serial,
   bigint,
