@@ -1,6 +1,6 @@
 {
-  "name": "@nucel.cloud/nucel-cli",
-  "version": "0.1.0",
+  "name": "@nucel.cloud/cli",
+  "version": "0.1.9",
   "description": "The open-source deployment platform for modern web apps",
   "type": "module",
   "bin": {
@@ -26,7 +26,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "package": "pkg . --targets node22-linux-x64,node22-linux-arm64,node22-macos-x64,node22-macos-arm64,node22-win-x64,node22-win-arm64 --output binaries/nucel-cli"
   },
   "dependencies": {
     "@pulumi/pulumi": "catalog:",
@@ -35,6 +36,7 @@
     "@nucel.cloud/nextjs-aws": "workspace:*",
     "@nucel.cloud/sveltekit-aws": "workspace:*",
     "@nucel.cloud/react-router-aws": "workspace:*",
+    "@aws-sdk/client-s3": "^3.540.0",
     "commander": "^12.0.0",
     "chalk": "^5.3.0",
     "ora": "^8.0.1",

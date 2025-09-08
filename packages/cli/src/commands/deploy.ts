@@ -1,8 +1,8 @@
 import { InlineProgramArgs, LocalWorkspace } from "@pulumi/pulumi/automation/index.js";
 import chalk from 'chalk';
 import ora from 'ora';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import path, { join } from 'path';
 import { buildProject } from '../utils/build.js';
 import { createNextJsProgram } from '../programs/nextjs.js';
 import { createSvelteKitProgram } from '../programs/sveltekit.js';
@@ -12,6 +12,7 @@ import type { ProjectConfig } from '../config/types.js';
 import { initializePulumiStack, refreshStack, displayPreviewResults, displayDeploymentResults } from '../utils/deployment.js';
 import { CONSTANTS } from '../config/constants.js';
 import { getFrameworkConfig } from '../config/framework-configs.js';
+import { ensureS3BucketExists } from '../utils/s3-backend.js';
 
 export interface DeployOptions {
   stack: string;
@@ -21,6 +22,8 @@ export interface DeployOptions {
   debug?: boolean;
   build?: boolean;
   skipBuild?: boolean;
+  buildCommand?: string;
+  backend?: 'local' | 's3' | 'auto';
 }
 
 export async function deploy(options: DeployOptions) {
@@ -57,12 +60,16 @@ export async function deploy(options: DeployOptions) {
     if (shouldBuild) {
       const buildSpinner = ora('Building application...').start();
       try {
-        // Use internal build process for each framework
-        const buildCommand = await getInternalBuildCommand(config);
+        // Use custom build command if provided, otherwise use internal build process
+        const buildCommand = options.buildCommand || await getInternalBuildCommand(config);
         
         if (verbose || debug) {
           buildSpinner.text = `Running: ${buildCommand}`;
-          console.log(chalk.gray(`\nUsing Nucel internal build process for ${config.framework}`));
+          if (options.buildCommand) {
+            console.log(chalk.gray(`\nUsing custom build command`));
+          } else {
+            console.log(chalk.gray(`\nUsing Nucel internal build process for ${config.framework}`));
+          }
         }
         
         await buildProject(buildCommand, { verbose: verbose || debug });
@@ -107,7 +114,60 @@ export async function deploy(options: DeployOptions) {
   try {
     process.env.PULUMI_CONFIG_PASSPHRASE = process.env.PULUMI_CONFIG_PASSPHRASE || CONSTANTS.PULUMI_CONFIG_PASSPHRASE;
     
-    const pulumiStack = await LocalWorkspace.createOrSelectStack(args);
+    // Determine backend based on options or environment
+    const backend = options.backend || 'auto';
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+    const awsRegion = config.aws.region || process.env.AWS_REGION || CONSTANTS.DEFAULT_AWS_REGION;
+    
+    let backendUrl: string;
+    
+    if (backend === 's3' || (backend === 'auto' && isCI && process.env.AWS_ACCESS_KEY_ID)) {
+      // Use S3 backend
+      // In CI, we can get the account ID from the AWS credentials
+      // Otherwise use project name as suffix for uniqueness
+      const bucketSuffix = process.env.AWS_ACCOUNT_ID || projectName.toLowerCase();
+      const bucketName = `${CONSTANTS.PULUMI_STATE_BUCKET_PREFIX}-${bucketSuffix}`;
+      
+      // Ensure the S3 bucket exists before using it
+      await ensureS3BucketExists(bucketName, awsRegion);
+      
+      backendUrl = `s3://${bucketName}?region=${awsRegion}`;
+      
+      if (verbose || debug) {
+        console.log(chalk.gray(`Using S3 backend: ${backendUrl}`));
+      }
+    } else if (backend === 'local' || backend === 'auto') {
+      // Use local backend
+      const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+      const localStateDir = path.join(homeDir, '.nucel', 'pulumi');
+      
+      // Ensure local state directory exists
+      if (!existsSync(localStateDir)) {
+        mkdirSync(localStateDir, { recursive: true });
+      }
+      
+      backendUrl = `file://${localStateDir}?no_tmp_dir=true`;
+      
+      if (verbose || debug) {
+        console.log(chalk.gray(`Using local backend: ${backendUrl}`));
+      }
+    } else {
+      throw new Error(`Unknown backend: ${backend}`);
+    }
+    
+    const pulumiStack = await LocalWorkspace.createOrSelectStack({
+      ...args,
+      workDir: process.cwd(),
+    }, { 
+      projectSettings: {
+        name: args.projectName,
+        runtime: "nodejs",
+        backend: { url: backendUrl },
+      },
+      envVars: {
+        PULUMI_CONFIG_PASSPHRASE: process.env.PULUMI_CONFIG_PASSPHRASE,
+      },
+    });
     stackSpinner.succeed('Stack initialized');
 
     const region = config.aws.region || process.env.AWS_REGION || CONSTANTS.DEFAULT_AWS_REGION;

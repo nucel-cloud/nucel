@@ -88,7 +88,7 @@ Several production applications are already using Nucel successfully.
 
 1. Install Nucel CLI:
 ```bash
-npm install -g @donswayo/nucel-cli
+npm install -g @nucel.cloud/cli
 ```
 
 2. Configure AWS credentials:
@@ -169,7 +169,7 @@ nucel deploy --stack production-stable
 ```yaml
 - name: Deploy
   run: |
-    npm install -g @donswayo/nucel-cli
+    npm install -g @nucel.cloud/cli
     nucel deploy --stack production --yes
   env:
     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_KEY }}
@@ -180,7 +180,7 @@ nucel deploy --stack production-stable
 ```yaml
 deploy:
   script:
-    - npm install -g @donswayo/nucel-cli
+    - npm install -g @nucel.cloud/cli
     - nucel deploy --stack production --yes
 ```
 

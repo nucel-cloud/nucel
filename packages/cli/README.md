@@ -42,13 +42,13 @@ Nucel abstracts away the complexity of AWS deployments using Pulumi's Automation
 ### Global Installation
 
 ```bash
-npm install -g @donswayo/nucel-cli
+npm install -g @nucel.cloud/cli
 ```
 
 ### Local Installation
 
 ```bash
-npm install --save-dev @donswayo/nucel-cli
+npm install --save-dev @nucel.cloud/cli
 ```
 
 For local installation, use `npx nucel` to run commands.
@@ -521,7 +521,7 @@ jobs:
         run: npm ci
       
       - name: Install Nucel
-        run: npm install -g @donswayo/nucel-cli
+        run: npm install -g @nucel.cloud/cli
       
       - name: Deploy to production
         env:

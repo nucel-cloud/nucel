@@ -1,11 +1,16 @@
 import { Outlet } from "react-router";
 import type { Route } from "./+types/layout";
 import { requireUser } from "~/lib/sessions.server";
+import { requireOnboarding } from "~/middleware/onboarding.server";
 import { AppSidebar } from "~/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@nucel.cloud/design-system/components/ui/sidebar";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const user = await requireUser(request);
+  
+  // Check onboarding status - will redirect if not complete
+  await requireOnboarding(request);
+  
   return { user };
 }
 

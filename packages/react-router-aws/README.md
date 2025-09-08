@@ -1,4 +1,4 @@
-# @donswayo/pulumi-react-router-aws
+# @nucel.cloud/react-router-aws
 
 A React Router v7 adapter and Pulumi library for deploying React Router applications to AWS using Lambda, S3, and CloudFront.
 
@@ -16,7 +16,7 @@ A React Router v7 adapter and Pulumi library for deploying React Router applicat
 ## Installation
 
 ```bash
-pnpm add @donswayo/pulumi-react-router-aws
+pnpm add @nucel.cloud/react-router-aws
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ In your `react-router.config.ts`:
 
 ```typescript
 import type { Config } from "@react-router/dev/config";
-import reactRouterAwsAdapter from "@donswayo/pulumi-react-router-aws/adapter";
+import reactRouterAwsAdapter from "@nucel.cloud/react-router-aws";
 
 const adapter = reactRouterAwsAdapter({
   out: '.react-router-aws',
@@ -68,10 +68,10 @@ Create a Pulumi program:
 
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
-import { ReactRouterAwsDeployment } from "@donswayo/pulumi-react-router-aws";
+import { ReactRouterAwsDeployment } from "@nucel.cloud/react-router-aws";
 
 const app = new ReactRouterAwsDeployment("my-react-router-app", {
-  buildPath: "./apps/react-router/.react-router-aws",
+  buildPath: ".react-router-aws",
   
   environment: {
     NODE_ENV: "production",
@@ -207,7 +207,7 @@ Ensure your React Router app has the required dependencies:
   },
   "devDependencies": {
     "@react-router/dev": "^7.0.0",
-    "@donswayo/pulumi-react-router-aws": "workspace:*"
+    "@nucel.cloud/react-router-aws": "workspace:*"
   }
 }
 ```

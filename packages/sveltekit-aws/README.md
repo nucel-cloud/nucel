@@ -1,4 +1,4 @@
-# @donswayo/pulumi-sveltekit-aws
+# @nucel.cloud/sveltekit-aws
 
 A SvelteKit adapter and Pulumi library for deploying SvelteKit applications to AWS using Lambda, S3, and CloudFront.
 
@@ -14,7 +14,7 @@ A SvelteKit adapter and Pulumi library for deploying SvelteKit applications to A
 ## Installation
 
 ```bash
-pnpm add @donswayo/pulumi-sveltekit-aws
+pnpm add @nucel.cloud/sveltekit-aws
 ```
 
 ## Usage
@@ -24,7 +24,7 @@ pnpm add @donswayo/pulumi-sveltekit-aws
 In your `svelte.config.js`:
 
 ```javascript
-import adapter from '@donswayo/pulumi-sveltekit-aws/adapter';
+import adapter from '@nucel.cloud/sveltekit-aws/adapter';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -58,7 +58,7 @@ Create a Pulumi program:
 
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
-import { SvelteKitNucelAws } from "@donswayo/pulumi-sveltekit-aws";
+import { SvelteKitNucelAws } from "@nucel.cloud/sveltekit-aws";
 
 const app = new SvelteKitNucelAws("my-sveltekit-app", {
   buildPath: "./apps/web/.nucel-build",
@@ -144,7 +144,7 @@ import {
   createS3Bucket,
   createServerFunction,
   createCloudFrontDistribution,
-} from "@donswayo/pulumi-sveltekit-aws";
+} from "@nucel.cloud/sveltekit-aws";
 
 // Custom deployment logic
 ```

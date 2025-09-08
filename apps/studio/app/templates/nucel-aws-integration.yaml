@@ -1,0 +1,333 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Nucel Platform - AWS Integration Stack for serverless deployments'
+
+Parameters:
+  ExternalId:
+    Type: String
+    Description: External ID for secure cross-account access
+    MinLength: 32
+    MaxLength: 128
+    AllowedPattern: '^[a-zA-Z0-9-]+$'
+  
+  DeploymentMode:
+    Type: String
+    Description: Deployment mode - SaaS (hosted by Nucel) or SelfHosted
+    Default: 'SelfHosted'
+    AllowedValues:
+      - 'SaaS'
+      - 'SelfHosted'
+  
+  NucelAccountId:
+    Type: String
+    Description: Nucel platform AWS account ID (only used if DeploymentMode is SaaS)
+    Default: '758346258758'  # Replace with actual Nucel account ID if using SaaS
+  
+  GitHubOrganization:
+    Type: String
+    Description: GitHub organization or username (for OIDC trust policy)
+    Default: '*'
+    MinLength: 1
+    MaxLength: 100
+  
+  StackPrefix:
+    Type: String
+    Description: Prefix for all resources created by Nucel
+    Default: 'nucel'
+    MinLength: 1
+    MaxLength: 20
+    AllowedPattern: '^[a-z][a-z0-9-]*$'
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Deployment Configuration"
+        Parameters:
+          - DeploymentMode
+          - GitHubOrganization
+      - Label:
+          default: "Security Configuration"
+        Parameters:
+          - ExternalId
+          - NucelAccountId
+      - Label:
+          default: "Resource Configuration"
+        Parameters:
+          - StackPrefix
+    ParameterLabels:
+      DeploymentMode:
+        default: "Deployment Mode"
+      GitHubOrganization:
+        default: "GitHub Organization/Username"
+      ExternalId:
+        default: "External ID (provided by Nucel)"
+      NucelAccountId:
+        default: "Nucel AWS Account ID (for SaaS mode)"
+      StackPrefix:
+        default: "Resource Prefix"
+
+Conditions:
+  IsSaaSMode: !Equals [!Ref DeploymentMode, 'SaaS']
+  IsSelfHostedMode: !Equals [!Ref DeploymentMode, 'SelfHosted']
+
+Resources:
+  # GitHub Actions OIDC Provider
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+      Tags:
+        - Key: ManagedBy
+          Value: Nucel
+        - Key: Purpose
+          Value: GitHubActionsOIDC
+
+  # IAM Role for Nucel to assume
+  NucelDeploymentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${StackPrefix}-deployment-role'
+      Description: 'Role for Nucel platform to deploy serverless applications'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Allow GitHub Actions OIDC
+          - Effect: Allow
+            Principal:
+              Federated: !Sub 'arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com'
+            Action: 'sts:AssumeRoleWithWebIdentity'
+            Condition:
+              StringEquals:
+                'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com'
+              StringLike:
+                'token.actions.githubusercontent.com:sub': !Sub 'repo:${GitHubOrganization}/*:*'
+          # Allow Nucel SaaS platform (only if using SaaS mode)
+          - !If
+            - IsSaaSMode
+            - Effect: Allow
+              Principal:
+                AWS: !Sub 'arn:aws:iam::${NucelAccountId}:root'
+              Action: 'sts:AssumeRole'
+              Condition:
+                StringEquals:
+                  'sts:ExternalId': !Ref ExternalId
+            - !Ref AWS::NoValue
+          # Allow local development/self-hosted
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref ExternalId
+      Tags:
+        - Key: ManagedBy
+          Value: Nucel
+        - Key: Purpose
+          Value: ServerlessDeployment
+
+  # Consolidated Policy 1: Core Compute and Storage
+  CoreServicesPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: NucelCoreServices
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # All serverless operations with wildcard
+          - Effect: Allow
+            Action:
+              - 'lambda:*'
+              - 's3:*'
+              - 'cloudfront:*'
+              - 'dynamodb:*'
+            Resource: '*'
+      Roles:
+        - !Ref NucelDeploymentRole
+
+  # Consolidated Policy 2: Networking and CDN Services
+  NetworkingPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: NucelNetworking
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # API Gateway - all operations
+          - Effect: Allow
+            Action: 'apigateway:*'
+            Resource: '*'
+          # Route53 - all operations
+          - Effect: Allow
+            Action: 'route53:*'
+            Resource: '*'
+          # ACM - all operations
+          - Effect: Allow
+            Action: 'acm:*'
+            Resource: '*'
+          # CloudFormation - all operations
+          - Effect: Allow
+            Action: 'cloudformation:*'
+            Resource:
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/${StackPrefix}-*/*'
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/*-deployment-*/*'
+          # SQS - all operations
+          - Effect: Allow
+            Action: 'sqs:*'
+            Resource:
+              - !Sub 'arn:aws:sqs:*:${AWS::AccountId}:${StackPrefix}-*'
+              - !Sub 'arn:aws:sqs:*:${AWS::AccountId}:*-revalidation-*'
+              - !Sub 'arn:aws:sqs:*:${AWS::AccountId}:*-deployment-*'
+      Roles:
+        - !Ref NucelDeploymentRole
+
+  # Consolidated Policy 3: IAM, Monitoring and Management
+  IAMMonitoringPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: NucelIAMMonitoring
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # IAM Role operations
+          - Effect: Allow
+            Action:
+              - 'iam:CreateRole'
+              - 'iam:DeleteRole'
+              - 'iam:GetRole'
+              - 'iam:UpdateRole'
+              - 'iam:PassRole'
+              - 'iam:AttachRolePolicy'
+              - 'iam:DetachRolePolicy'
+              - 'iam:PutRolePolicy'
+              - 'iam:DeleteRolePolicy'
+              - 'iam:GetRolePolicy'
+              - 'iam:ListRolePolicies'
+              - 'iam:ListAttachedRolePolicies'
+              - 'iam:UpdateAssumeRolePolicy'
+              - 'iam:TagRole'
+              - 'iam:UntagRole'
+              - 'iam:ListRoleTags'
+              - 'iam:CreatePolicy'
+              - 'iam:DeletePolicy'
+              - 'iam:GetPolicy'
+              - 'iam:GetPolicyVersion'
+              - 'iam:ListPolicyVersions'
+              - 'iam:CreatePolicyVersion'
+              - 'iam:DeletePolicyVersion'
+              - 'iam:CreateServiceLinkedRole'
+              - 'iam:ListInstanceProfilesForRole'
+              - 'iam:AddRoleToInstanceProfile'
+              - 'iam:RemoveRoleFromInstanceProfile'
+            Resource:
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/${StackPrefix}-*'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:role/*-deployment-*'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/${StackPrefix}-*'
+              - !Sub 'arn:aws:iam::${AWS::AccountId}:policy/*-deployment-*'
+              - '*'
+          # CloudWatch Logs
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:DeleteLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:DeleteLogStream'
+              - 'logs:PutLogEvents'
+              - 'logs:DescribeLogGroups'
+              - 'logs:DescribeLogStreams'
+              - 'logs:GetLogEvents'
+              - 'logs:FilterLogEvents'
+              - 'logs:PutRetentionPolicy'
+              - 'logs:DeleteRetentionPolicy'
+              - 'logs:TagLogGroup'
+              - 'logs:UntagLogGroup'
+              - 'logs:ListTagsLogGroup'
+            Resource:
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/${StackPrefix}-*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/${StackPrefix}-*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/*-deployment-*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/lambda/*-deployment-*:*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/ecs/*'
+              - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/aws/ecs/*:*'
+          # CloudFormation
+          - Effect: Allow
+            Action:
+              - 'cloudformation:CreateStack'
+              - 'cloudformation:UpdateStack'
+              - 'cloudformation:DeleteStack'
+              - 'cloudformation:DescribeStacks'
+              - 'cloudformation:DescribeStackEvents'
+              - 'cloudformation:DescribeStackResources'
+              - 'cloudformation:GetStackPolicy'
+              - 'cloudformation:SetStackPolicy'
+              - 'cloudformation:ValidateTemplate'
+              - 'cloudformation:ListStacks'
+              - 'cloudformation:GetTemplate'
+            Resource:
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/${StackPrefix}-*/*'
+              - !Sub 'arn:aws:cloudformation:*:${AWS::AccountId}:stack/*-deployment-*/*'
+      Roles:
+        - !Ref NucelDeploymentRole
+
+  # Consolidated Policy 4: Infrastructure Services (ECS, ECR, VPC, ALB, etc.)
+  InfrastructureServicesPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: NucelInfrastructureServices
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # All infrastructure operations with wildcard
+          - Effect: Allow
+            Action:
+              - 'ecs:*'
+              - 'ecr:*'
+              - 'secretsmanager:*'
+              - 'ssm:*'
+              - 'ec2:*'
+              - 'elasticloadbalancing:*'
+              - 'autoscaling:*'
+              - 'application-autoscaling:*'
+              - 'events:*'
+              - 'scheduler:*'
+              - 'wafv2:*'
+              - 'waf:*'
+              - 'waf-regional:*'
+            Resource: '*'
+      Roles:
+        - !Ref NucelDeploymentRole
+
+
+Outputs:
+  RoleArn:
+    Description: ARN of the IAM role for Nucel to assume
+    Value: !GetAtt NucelDeploymentRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RoleArn'
+  
+  ExternalId:
+    Description: External ID used for authentication
+    Value: !Ref ExternalId
+    Export:
+      Name: !Sub '${AWS::StackName}-ExternalId'
+  
+  AccountId:
+    Description: AWS Account ID where this stack is deployed
+    Value: !Ref AWS::AccountId
+    Export:
+      Name: !Sub '${AWS::StackName}-AccountId'
+  
+  Region:
+    Description: AWS Region where this stack is deployed
+    Value: !Ref AWS::Region
+    Export:
+      Name: !Sub '${AWS::StackName}-Region'
+  
+  StackName:
+    Description: Name of this CloudFormation stack
+    Value: !Ref AWS::StackName
