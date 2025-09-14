@@ -1,6 +1,8 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "stacks/*/**"
+  - "examples/*"
 
 catalog:
   "@pulumi/aws": ^7.6.0
