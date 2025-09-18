@@ -14,6 +14,7 @@ import { initializePulumiStack, refreshStack, displayPreviewResults, displayDepl
 import { CONSTANTS } from '../config/constants.js';
 import { getFrameworkConfig } from '../config/framework-configs.js';
 import { ensureS3BucketExists } from '../utils/s3-backend.js';
+import { DeploymentProgressTracker } from '../utils/deployment-progress.js';
 
 export interface DeployOptions {
   stack: string;
@@ -45,11 +46,14 @@ export async function deploy(options: DeployOptions) {
   const config = await loadConfig();
   configSpinner.succeed(`Configuration loaded for ${config.name}`);
   
-  console.log(chalk.cyan(`\nDeploying ${config.framework} application to AWS\n`));
+  const action = destroy ? 'Destroying' : 'Deploying';
+  const actionColor = destroy ? chalk.yellow : chalk.cyan;
+  
+  console.log(actionColor(`\n${action} ${config.framework} application${destroy ? '' : ' to AWS'}\n`));
   console.log(chalk.gray(`  Project: ${config.name}`));
   console.log(chalk.gray(`  Stack: ${stack}`));
   console.log(chalk.gray(`  Region: ${config.aws.region}`));
-  if (config.domains?.length) {
+  if (config.domains?.length && !destroy) {
     console.log(chalk.gray(`  Domains: ${config.domains.join(', ')}`));
   }
   console.log();
@@ -212,87 +216,92 @@ export async function deploy(options: DeployOptions) {
       
       console.log(chalk.cyan('\n📋 Preview Results (Dry Run)\n'));
     } else if (destroy) {
-      const destroySpinner = ora('Destroying infrastructure...').start();
-      await pulumiStack.destroy({ 
-        onOutput: (msg: string) => {
-          if (process.env.DEBUG) console.log(msg);
-        }
-      });
-      destroySpinner.succeed('Infrastructure destroyed');
-      console.log(chalk.green('\n✅ Stack destroyed successfully\n'));
-    } else {
-      let deploySpinner = verbose || debug ? null : ora('Initializing deployment...').start();
-      if (verbose || debug) {
-        console.log(chalk.cyan('\nDeploying to AWS...\n'));
+      // Create progress tracker for destroy operation
+      const progressTracker = new DeploymentProgressTracker(verbose || debug);
+      
+      if (!verbose && !debug) {
+        console.log(chalk.yellow('\nDestroying resources...\n'));
+      } else {
+        console.log(chalk.yellow('\nDestroying with verbose output...\n'));
       }
       
-      let lastResourceType = '';
+      const destroyRes = await pulumiStack.destroy({ 
+        onOutput: (msg: string) => {
+          progressTracker.onPulumiOutput(msg);
+        },
+        onEvent: (event: any) => {
+          progressTracker.onPulumiEvent(event);
+        }
+      });
+      
+      progressTracker.complete(true, 'destroy');
+      
+      // Show summary of what was destroyed
+      const summary = destroyRes.summary;
+      const deletedCount = summary.resourceChanges?.delete || 0;
+      if (deletedCount > 0) {
+        console.log(chalk.yellow('\nResources destroyed:'));
+        console.log(chalk.gray(`  Deleted: ${deletedCount}`));
+      } else {
+        console.log(chalk.gray('\nNo resources to destroy (stack was already empty)'));
+      }
+      
+      console.log('');
+    } else {
+      // Create progress tracker
+      const progressTracker = new DeploymentProgressTracker(verbose || debug);
+      
+      if (verbose || debug) {
+        console.log(chalk.cyan('\nDeploying...\n'));
+      } else {
+        console.log(chalk.cyan('\nDeploying...\n'));
+      }
+      
       let upRes;
       
       try {
         upRes = await pulumiStack.up({ 
           onOutput: (msg: string) => {
-            if (verbose || debug) {
-              console.log(chalk.gray(msg));
-            } else if (deploySpinner) {
-              // Parse Pulumi output to show user-friendly progress
-              const progressMessage = parseDeploymentProgress(msg);
-              if (progressMessage && progressMessage !== lastResourceType) {
-                deploySpinner.text = progressMessage;
-                lastResourceType = progressMessage;
-              }
-            }
+            progressTracker.onPulumiOutput(msg);
           },
           onEvent: (event: any) => {
-            if (!verbose && !debug && deploySpinner && event.type === 'resource-pre-create') {
-              const message = getResourceProgressMessage(event.metadata?.type, event.metadata?.name);
-              if (message) {
-                deploySpinner.text = message;
-              }
-            }
+            progressTracker.onPulumiEvent(event);
           }
         });
       } catch (deployError: any) {
         // Handle locked stack during deployment
         if (deployError.message?.includes('the stack is currently locked')) {
-          if (deploySpinner) {
-            deploySpinner.text = 'Stack is locked, attempting to recover...';
-          } else {
-            console.log(chalk.yellow('\n⚠️  Stack is locked, attempting to recover...'));
-          }
+          progressTracker.log(chalk.yellow('\nStack is locked, attempting to recover...'));
           
           try {
             await pulumiStack.cancel();
-            if (deploySpinner) {
-              deploySpinner.text = 'Retrying deployment...';
-            } else {
-              console.log(chalk.green('✓ Lock cleared, retrying...'));
-            }
+            progressTracker.log(chalk.green('Lock cleared, retrying...'));
             
             // Retry the deployment
             upRes = await pulumiStack.up({ 
               onOutput: (msg: string) => {
-                if (verbose || debug) {
-                  console.log(chalk.gray(msg));
-                }
+                progressTracker.onPulumiOutput(msg);
+              },
+              onEvent: (event: any) => {
+                progressTracker.onPulumiEvent(event);
               }
             });
           } catch (retryError) {
+            progressTracker.complete(false);
             throw new Error('Stack is locked. Please try again in a moment.');
           }
         } else {
+          progressTracker.complete(false);
           throw deployError;
         }
       }
       
-      if (deploySpinner) deploySpinner.succeed('Deployment completed');
-
-      displayDeploymentResults(upRes);
-
-      console.log(chalk.gray('\nResource Summary:'));
-      console.log(chalk.gray(`  Created: ${upRes.summary.resourceChanges?.create || 0}`));
-      console.log(chalk.gray(`  Updated: ${upRes.summary.resourceChanges?.update || 0}`));
-      console.log(chalk.gray(`  Deleted: ${upRes.summary.resourceChanges?.delete || 0}`));
+      // Complete progress tracking
+      progressTracker.complete(true);
+      
+      // Display summary with outputs
+      const outputs = upRes.outputs || {};
+      progressTracker.displaySummary(outputs);
     }
   } catch (error) {
     stackSpinner.fail('Deployment failed');
@@ -353,58 +362,3 @@ async function getInternalBuildCommand(config: ProjectConfig): Promise<string> {
   }
 }
 
-function parseDeploymentProgress(output: string): string | null {
-  // Parse Pulumi output to show user-friendly messages
-  if (output.includes('aws:s3:Bucket')) {
-    return '📦 Creating storage bucket...';
-  }
-  if (output.includes('aws:s3:BucketObject')) {
-    return '⬆️  Uploading static assets...';
-  }
-  if (output.includes('aws:lambda:Function')) {
-    return '⚡ Creating Lambda function...';
-  }
-  if (output.includes('aws:lambda:FunctionUrl')) {
-    return '🔗 Configuring function URL...';
-  }
-  if (output.includes('aws:cloudfront:Distribution')) {
-    return '🌐 Setting up CloudFront CDN...';
-  }
-  if (output.includes('aws:cloudfront:OriginAccessIdentity')) {
-    return '🔐 Configuring CDN access...';
-  }
-  if (output.includes('aws:iam:Role')) {
-    return '👤 Setting up IAM permissions...';
-  }
-  if (output.includes('aws:dynamodb:Table')) {
-    return '💾 Creating DynamoDB table...';
-  }
-  if (output.includes('aws:sqs:Queue')) {
-    return '📨 Setting up message queue...';
-  }
-  if (output.includes('updating') || output.includes('creating')) {
-    return '🔄 Updating resources...';
-  }
-  return null;
-}
-
-function getResourceProgressMessage(type: string, name: string): string | null {
-  if (!type) return null;
-  
-  const typeMap: Record<string, string> = {
-    'aws:s3:Bucket': '📦 Creating storage bucket',
-    'aws:s3:BucketObject': '⬆️  Uploading assets',
-    'aws:lambda:Function': '⚡ Deploying Lambda function',
-    'aws:lambda:FunctionUrl': '🔗 Configuring function URL',
-    'aws:cloudfront:Distribution': '🌐 Setting up CloudFront CDN',
-    'aws:cloudfront:OriginAccessIdentity': '🔐 Setting up CDN access',
-    'aws:iam:Role': '👤 Configuring IAM permissions',
-    'aws:iam:RolePolicyAttachment': '📝 Attaching policies',
-    'aws:dynamodb:Table': '💾 Creating database table',
-    'aws:sqs:Queue': '📨 Creating message queue',
-    'aws:s3:BucketPolicy': '🔒 Setting bucket permissions',
-    'aws:lambda:Permission': '✅ Granting Lambda permissions',
-  };
-  
-  return typeMap[type] || null;
-}
