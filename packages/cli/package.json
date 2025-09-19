@@ -34,7 +34,7 @@
     "@nucel.cloud/hono-aws": "workspace:*",
     "@nucel.cloud/nextjs-aws": "workspace:*",
     "@nucel.cloud/react-router-aws": "workspace:*",
-    "@nucel.cloud/static-aws-stack": "workspace:*",
+    "@nucel.cloud/static-aws": "workspace:*",
     "@nucel.cloud/sveltekit-aws": "workspace:*",
     "@pulumi/aws": "catalog:",
     "@pulumi/command": "catalog:",
