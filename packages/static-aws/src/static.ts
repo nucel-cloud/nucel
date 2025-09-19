@@ -165,19 +165,4 @@ export class StaticSite extends pulumi.ComponentResource {
     });
   }
 
-  /**
-   * Invalidate CloudFront cache
-   */
-  public invalidateCache(paths: string[] = ["/*"]): pulumi.Output<aws.cloudfront.Invalidation> {
-    return this.distributionId.apply(distId => 
-      new aws.cloudfront.Invalidation(
-        `${distId}-invalidation-${Date.now()}`,
-        {
-          distributionId: distId,
-          paths,
-        },
-        { parent: this }
-      )
-    );
-  }
 }
