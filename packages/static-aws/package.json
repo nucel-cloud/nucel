@@ -1,0 +1,46 @@
+{
+  "name": "@nucel.cloud/static-aws",
+  "version": "0.1.0",
+  "description": "AWS static deployment stack for Nucel - Deploy SPAs to S3 and CloudFront",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pulumi/aws": "catalog:",
+    "@pulumi/pulumi": "catalog:",
+    "mime-types": "catalog:"
+  },
+  "devDependencies": {
+    "@types/mime-types": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "nucel",
+    "static",
+    "spa",
+    "s3",
+    "cloudfront",
+    "aws",
+    "deployment",
+    "pulumi"
+  ],
+  "author": "Nucel Cloud",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nucel-cloud/nucel"
+  }
+}

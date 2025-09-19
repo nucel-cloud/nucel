@@ -8,6 +8,7 @@ import { createNextJsProgram } from '../programs/nextjs.js';
 import { createSvelteKitProgram } from '../programs/sveltekit.js';
 import { createReactRouterProgram } from '../programs/react-router.js';
 import { createHonoProgram } from '../programs/hono.js';
+import { createStaticProgram } from '../programs/static.js';
 import { loadConfig } from '../config/loader.js';
 import type { ProjectConfig } from '../config/types.js';
 import { initializePulumiStack, refreshStack, displayPreviewResults, displayDeploymentResults } from '../utils/deployment.js';
@@ -105,6 +106,9 @@ export async function deploy(options: DeployOptions) {
       break;
     case 'hono':
       pulumiProgram = createHonoProgram(config);
+      break;
+    case 'static':
+      pulumiProgram = createStaticProgram(config);
       break;
     default:
       throw new Error(`Unsupported framework: ${config.framework}`);

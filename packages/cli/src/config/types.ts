@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-export type Framework = 'nextjs' | 'sveltekit' | 'react-router' | 'hono' | 'unknown';
+export type Framework = 'nextjs' | 'sveltekit' | 'react-router' | 'hono' | 'static' | 'unknown';
 
 export const NucelConfigSchema = z.object({
   name: z.string().optional(),
-  framework: z.enum(['nextjs', 'sveltekit', 'react-router', 'hono']).optional(),
+  framework: z.enum(['nextjs', 'sveltekit', 'react-router', 'hono', 'static']).optional(),
   buildCommand: z.string().optional(),
   outputDirectory: z.string().optional(),
   environment: z.record(z.string()).optional(),

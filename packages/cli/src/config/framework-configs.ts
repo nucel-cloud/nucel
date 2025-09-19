@@ -40,6 +40,13 @@ export const FRAMEWORK_CONFIGS: Record<Framework, FrameworkConfig> = {
     configFiles: [],
     dependencies: ['hono'],
   },
+  static: {
+    buildCommand: 'npm run build',
+    outputDirectory: 'dist',
+    envPrefixes: ['VITE_', 'PUBLIC_', 'NUCEL_'],
+    configFiles: ['vite.config.js', 'vite.config.ts', 'webpack.config.js'],
+    dependencies: [],
+  },
   unknown: {
     buildCommand: 'npm run build',
     outputDirectory: 'dist',
