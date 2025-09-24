@@ -76,7 +76,7 @@ export class ReactRouterNucelAws extends pulumi.ComponentResource {
       bucket: s3Result.bucket,
       functionUrl: lambdaResult.functionUrl,
       oai: s3Result.oai,
-      s3Objects: s3Result.objects,
+      uploadCommands: s3Result.uploadCommands,
       priceClass,
       domain,
       tags,

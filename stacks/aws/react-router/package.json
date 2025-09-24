@@ -1,6 +1,6 @@
 {
   "name": "@nucel.cloud/react-router-aws",
-  "version": "0.1.8",
+  "version": "0.1.27",
   "description": "React Router v7 adapter and Pulumi components for deploying to AWS Lambda, CloudFront, and S3",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,8 +26,10 @@
   },
   "dependencies": {
     "@pulumi/aws": "catalog:",
+    "@pulumi/command": "catalog:",
     "@pulumi/pulumi": "catalog:",
     "archiver": "catalog:",
+    "esbuild": "^0.25.10",
     "globby": "catalog:",
     "mime-types": "catalog:"
   },

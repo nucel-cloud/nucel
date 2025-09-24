@@ -50,8 +50,8 @@ export function createLambda(args: CreateLambdaArgs): LambdaResult {
   
   // Create Lambda function with performance optimizations
   const lambdaFunction = new aws.lambda.Function(`${name}-function`, {
-    runtime: 'nodejs20.x',
-    handler: 'handler.handler',
+    runtime: 'nodejs22.x',
+    handler: 'lambda.handler',
     code: lambdaCode,
     role: lambdaRole.arn,
     memorySize: lambda.memory || 1024, // Default 1GB for better performance
@@ -64,10 +64,11 @@ export function createLambda(args: CreateLambdaArgs): LambdaResult {
     tags,
   }, { parent });
   
-  // Create Lambda Function URL
+  // Create Lambda Function URL with optional streaming support
   const functionUrl = new aws.lambda.FunctionUrl(`${name}-function-url`, {
     functionName: lambdaFunction.name,
     authorizationType: 'NONE',
+    invokeMode: lambda.streaming ? 'RESPONSE_STREAM' : 'BUFFERED', // Enable streaming if configured
     cors: {
       allowOrigins: ['*'],
       allowMethods: ['*'],

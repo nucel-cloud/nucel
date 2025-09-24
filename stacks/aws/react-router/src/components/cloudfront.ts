@@ -1,5 +1,6 @@
 import * as pulumi from '@pulumi/pulumi';
 import * as aws from '@pulumi/aws';
+import * as command from '@pulumi/command';
 import { 
   CACHE_POLICIES, 
   ORIGIN_REQUEST_POLICIES, 
@@ -12,7 +13,7 @@ export interface CreateCloudFrontArgs {
   bucket: aws.s3.Bucket;
   functionUrl: aws.lambda.FunctionUrl;
   oai: aws.cloudfront.OriginAccessIdentity;
-  s3Objects: aws.s3.BucketObject[];
+  uploadCommands: command.local.Command[];
   priceClass?: string;
   domain?: DomainConfig;
   tags?: Record<string, string>;
@@ -20,16 +21,16 @@ export interface CreateCloudFrontArgs {
 }
 
 export function createCloudFrontDistribution(args: CreateCloudFrontArgs): aws.cloudfront.Distribution {
-  const { 
-    name, 
-    bucket, 
-    functionUrl, 
-    oai, 
-    s3Objects,
+  const {
+    name,
+    bucket,
+    functionUrl,
+    oai,
+    uploadCommands,
     priceClass = 'PriceClass_100',
     domain,
     tags = {},
-    parent 
+    parent
   } = args;
   
   // Create CloudFront distribution with performance optimizations
@@ -54,12 +55,12 @@ export function createCloudFrontDistribution(args: CreateCloudFrontArgs): aws.cl
       {
         domainName: functionUrl.functionUrl.apply(url => new URL(url).hostname),
         originId: 'lambda-ssr',
-        customHeaders: [
+        customHeaders: domain ? [
           {
             name: 'x-forwarded-host',
-            value: functionUrl.functionUrl.apply(url => new URL(url).hostname),
+            value: domain.name,
           },
-        ],
+        ] : [],
         customOriginConfig: {
           httpPort: 80,
           httpsPort: 443,
@@ -290,7 +291,7 @@ export function createCloudFrontDistribution(args: CreateCloudFrontArgs): aws.cl
     ],
     
     tags,
-  }, { parent, dependsOn: s3Objects });
+  }, { parent, dependsOn: uploadCommands });
   
   return distribution;
 }

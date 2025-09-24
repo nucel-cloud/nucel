@@ -37,11 +37,12 @@ export interface LambdaConfig {
   timeout?: number;
   architecture?: 'x86_64' | 'arm64';
   reservedConcurrency?: number;
+  streaming?: boolean;
 }
 
 export interface DomainConfig {
   name: string;
-  certificateArn?: string;
+  certificateArn?: pulumi.Input<string>;
 }
 
 export interface DeploymentOutputs {
