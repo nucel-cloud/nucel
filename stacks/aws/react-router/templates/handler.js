@@ -141,6 +141,38 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream,
 
     console.log('Extracted metadata:', metadata);
 
+    // Check if this is a redirect (3xx status code)
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      console.log('Redirect detected:', { status: response.status, location });
+
+      // For redirects, return HTML with meta refresh to handle Lambda streaming limitations
+      const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="0;url=${location}">
+<title>Redirecting...</title>
+</head>
+<body>
+<script>window.location.href="${location}";</script>
+<p>Redirecting to <a href="${location}">${location}</a>...</p>
+</body>
+</html>`;
+
+      // Override content-type for HTML
+      metadata.headers['content-type'] = 'text/html; charset=utf-8';
+
+      const httpResponseStream = awslambda.HttpResponseStream.from(
+        responseStream,
+        metadata
+      );
+
+      httpResponseStream.write(htmlContent);
+      httpResponseStream.end();
+      return;
+    }
+
     // For Lambda Function URLs, use HttpResponseStream
     const httpResponseStream = awslambda.HttpResponseStream.from(
       responseStream,
@@ -158,11 +190,57 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream,
       console.log('Body found:', {
         bodyType: typeof body,
         isReadableStream: body instanceof ReadableStream,
-        bodyConstructor: body.constructor.name
+        bodyConstructor: body.constructor.name,
+        contentType: response.headers.get('content-type')
       });
 
-      // Use React Router's utility to write the stream
-      await writeReadableStreamToWritable(body, httpResponseStream);
+      // Check if this is an SSE response that needs special handling
+      const contentType = response.headers.get('content-type');
+      const isSSE = contentType && contentType.includes('text/event-stream');
+
+      if (isSSE) {
+        console.log('SSE response detected, using optimized streaming');
+
+        // For SSE, manually handle streaming with padding to force Lambda to flush
+        const reader = body.getReader();
+        const decoder = new TextDecoder();
+        const encoder = new TextEncoder();
+
+        // Padding to force Lambda to flush (1KB of spaces as SSE comment)
+        const padding = ': ' + ' '.repeat(1024) + '\n';
+        const paddingBytes = encoder.encode(padding);
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) {
+              console.log('SSE stream complete');
+              break;
+            }
+
+            // Write the actual chunk
+            httpResponseStream.write(value);
+
+            // Check if chunk is small and might be buffered
+            if (value.length < 1024) {
+              // Decode to check if it's a complete SSE message
+              const text = decoder.decode(value, { stream: true });
+
+              // If it ends with \n\n (SSE message boundary), add padding
+              if (text.includes('\n\n')) {
+                httpResponseStream.write(paddingBytes);
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+          httpResponseStream.end();
+        }
+      } else {
+        // For non-SSE responses, use the standard approach
+        await writeReadableStreamToWritable(body, httpResponseStream);
+      }
     }
 
     console.log('Response streaming completed successfully');

@@ -64,7 +64,7 @@ export class ReactRouterNucelAws extends pulumi.ComponentResource {
     const lambdaResult = createLambda({
       name,
       serverPath,
-      environment,
+      environment: pulumi.output(environment || {}),
       lambda,
       tags,
       parent: this,

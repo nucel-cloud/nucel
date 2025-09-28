@@ -9,7 +9,7 @@ export interface ReactRouterNucelAwsArgs {
   /**
    * Environment variables for the Lambda function
    */
-  environment?: Record<string, string>;
+  environment?: pulumi.Input<Record<string, string>>;
   
   /**
    * Lambda configuration
@@ -38,6 +38,10 @@ export interface LambdaConfig {
   architecture?: 'x86_64' | 'arm64';
   reservedConcurrency?: number;
   streaming?: boolean;
+  vpc?: {
+    subnetIds: pulumi.Input<pulumi.Input<string>[]>;
+    securityGroupIds: pulumi.Input<pulumi.Input<string>[]>;
+  };
 }
 
 export interface DomainConfig {

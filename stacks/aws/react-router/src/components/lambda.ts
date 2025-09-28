@@ -6,7 +6,7 @@ import { validateEnvironmentVariables } from '../utils.js';
 export interface CreateLambdaArgs {
   name: string;
   serverPath: string;
-  environment?: Record<string, string>;
+  environment?: pulumi.Input<Record<string, string>>;
   lambda?: LambdaConfig;
   tags?: Record<string, string>;
   parent: pulumi.ComponentResource;
@@ -20,7 +20,7 @@ export interface LambdaResult {
 
 export function createLambda(args: CreateLambdaArgs): LambdaResult {
   const { name, serverPath, environment = {}, lambda = {}, tags = {}, parent } = args;
-  
+
   // Create IAM role for Lambda
   const lambdaRole = new aws.iam.Role(`${name}-lambda-role`, {
     assumeRolePolicy: JSON.stringify({
@@ -35,19 +35,20 @@ export function createLambda(args: CreateLambdaArgs): LambdaResult {
     }),
     tags,
   }, { parent });
-  
+
   // Attach basic execution policy
   new aws.iam.RolePolicyAttachment(`${name}-lambda-policy`, {
     role: lambdaRole.name,
     policyArn: 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
   }, { parent });
-  
+
   // Prepare Lambda code
   const lambdaCode = new pulumi.asset.FileArchive(serverPath);
-  
-  // Validate environment variables
-  const validEnvVars = validateEnvironmentVariables(environment);
-  
+
+  // Resolve environment variables and validate them
+  const resolvedEnvironment = pulumi.output(environment);
+  const validEnvVars = resolvedEnvironment.apply(env => validateEnvironmentVariables(env));
+
   // Create Lambda function with performance optimizations
   const lambdaFunction = new aws.lambda.Function(`${name}-function`, {
     runtime: 'nodejs22.x',
@@ -61,6 +62,10 @@ export function createLambda(args: CreateLambdaArgs): LambdaResult {
       variables: validEnvVars,
     },
     reservedConcurrentExecutions: lambda.reservedConcurrency, // Optional: user-controlled
+    vpcConfig: lambda.vpc ? {
+      subnetIds: lambda.vpc.subnetIds,
+      securityGroupIds: lambda.vpc.securityGroupIds,
+    } : undefined,
     tags,
   }, { parent });
   
